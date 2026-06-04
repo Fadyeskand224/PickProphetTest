@@ -1,0 +1,2885 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>PickProphet — Soccer AI</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0d0d0d;
+    --card: #141414;
+    --card2: #1a1a1a;
+    --border: #272727;
+    --border2: #333;
+    --green: #3dff8f;
+    --green-dim: rgba(61,255,143,0.12);
+    --text: #ffffff;
+    --text2: #888;
+    --text3: #555;
+    --red: #ff4d4d;
+    --red-dim: rgba(255,77,77,0.12);
+    --yellow: #f5a623;
+    --yellow-dim: rgba(245,166,35,0.12);
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    min-height: 100vh;
+  }
+
+  /* NAV */
+  nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 40px;
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    background: var(--bg);
+    z-index: 100;
+  }
+  .nav-logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text);
+    text-decoration: none;
+  }
+  .nav-logo-icon {
+    width: 32px; height: 32px;
+    background: var(--green);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px;
+  }
+  .nav-links { display: flex; align-items: center; gap: 28px; }
+  .nav-links a { color: var(--text2); font-size: 14px; text-decoration: none; transition: color .2s; }
+  .nav-links a:hover { color: var(--text); }
+  .nav-launch {
+    background: var(--green);
+    color: #000;
+    font-weight: 700;
+    font-size: 14px;
+    padding: 9px 20px;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    transition: opacity .2s;
+  }
+  .nav-launch:hover { opacity: 0.85; }
+
+  /* HERO */
+  .hero {
+    padding: 56px 40px 40px;
+    max-width: 900px;
+    margin: 0 auto;
+  }
+  .hero-tag {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: .12em;
+    color: var(--green);
+    margin-bottom: 16px;
+    text-transform: uppercase;
+  }
+  .hero h1 {
+    font-size: clamp(32px, 5vw, 48px);
+    font-weight: 800;
+    line-height: 1.1;
+    margin-bottom: 0;
+  }
+  .hero h1 span { color: var(--green); }
+
+  /* APP CARD */
+  .app-card {
+    max-width: 900px;
+    margin: 32px auto 60px;
+    padding: 0 40px;
+  }
+
+  /* TABS */
+  .tabs {
+    display: flex;
+    gap: 0;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 32px;
+  }
+  .tab {
+    padding: 14px 24px;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    border: none;
+    background: none;
+    cursor: pointer;
+    color: var(--text3);
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    font-family: inherit;
+    transition: color .2s;
+  }
+  .tab:hover { color: var(--text2); }
+  .tab.active {
+    color: var(--text);
+    border-bottom: 2px solid var(--green);
+  }
+  .section { display: none; }
+  .section.active { display: block; }
+
+  /* FORM CARD */
+  .form-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 28px 32px;
+    margin-bottom: 20px;
+  }
+
+  .field-label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--text2);
+    margin-bottom: 8px;
+    display: block;
+  }
+
+  input, select, textarea {
+    width: 100%;
+    background: var(--card2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: inherit;
+    font-size: 14px;
+    padding: 11px 14px;
+    outline: none;
+    transition: border-color .2s;
+    appearance: none;
+    -webkit-appearance: none;
+  }
+  input::placeholder, textarea::placeholder { color: var(--text3); }
+  input:focus, select:focus, textarea:focus { border-color: var(--green); }
+  select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23666' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    padding-right: 36px;
+    cursor: pointer;
+  }
+  textarea { resize: vertical; min-height: 110px; line-height: 1.6; }
+
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 18px; }
+  .row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 18px; }
+  .row4 { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 16px; margin-bottom: 18px; }
+  .field { display: flex; flex-direction: column; }
+  .mb { margin-bottom: 18px; }
+
+  /* BUTTONS */
+  .btn-green {
+    background: var(--green);
+    color: #000;
+    font-weight: 700;
+    font-size: 14px;
+    letter-spacing: .04em;
+    padding: 13px 24px;
+    border-radius: 10px;
+    border: none;
+    cursor: pointer;
+    font-family: inherit;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: opacity .2s;
+    text-transform: uppercase;
+  }
+  .btn-green:hover { opacity: 0.85; }
+  .btn-green:disabled { opacity: 0.35; cursor: not-allowed; }
+
+  .btn-outline {
+    background: transparent;
+    color: var(--green);
+    font-weight: 700;
+    font-size: 13px;
+    letter-spacing: .06em;
+    padding: 10px 20px;
+    border-radius: 8px;
+    border: 1px solid var(--green);
+    cursor: pointer;
+    font-family: inherit;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: background .2s;
+    text-transform: uppercase;
+  }
+  .btn-outline:hover { background: var(--green-dim); }
+  .btn-outline:disabled { opacity: 0.35; cursor: not-allowed; }
+
+  /* PICK LIST */
+  .section-label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--text3);
+    margin-bottom: 12px;
+  }
+
+  .pick-item {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 8px;
+    transition: border-color .2s;
+  }
+  .pick-item:hover { border-color: var(--border2); }
+  .pick-league { font-size: 11px; color: var(--text3); letter-spacing: .05em; text-transform: uppercase; margin-bottom: 4px; }
+  .pick-player { font-size: 15px; font-weight: 600; color: var(--text); }
+  .pick-detail { font-size: 13px; color: var(--text2); margin-top: 3px; }
+  .pick-reasoning { font-size: 12px; color: var(--text3); margin-top: 6px; line-height: 1.5; }
+  .badge {
+    font-size: 11px;
+    font-weight: 700;
+    padding: 4px 10px;
+    border-radius: 99px;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+  .badge-win { background: var(--green-dim); color: var(--green); }
+  .badge-loss { background: var(--red-dim); color: var(--red); }
+  .badge-pending { background: rgba(255,255,255,0.06); color: var(--text2); }
+  .pick-actions { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; margin-left: 16px; }
+  .remove-btn {
+    background: none; border: none; cursor: pointer;
+    color: var(--text3); font-size: 12px; font-family: inherit;
+    transition: color .2s;
+  }
+  .remove-btn:hover { color: var(--red); }
+
+  /* PREDICTION OUTPUT */
+  .pred-output {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 28px 32px;
+    margin-top: 20px;
+  }
+  .pred-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 20px;
+  }
+  .pred-player-name { font-size: 20px; font-weight: 700; }
+  .pred-meta { font-size: 13px; color: var(--text2); margin-top: 4px; }
+  .pred-rec { font-size: 28px; font-weight: 800; color: var(--green); text-align: right; }
+  .pred-value-badge { margin-top: 6px; text-align: right; }
+
+  .conf-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+  .conf-label-txt { font-size: 12px; color: var(--text2); text-transform: uppercase; letter-spacing: .06em; }
+  .conf-pct { font-size: 22px; font-weight: 700; color: var(--text); }
+  .conf-bar { height: 4px; background: var(--border); border-radius: 99px; overflow: hidden; margin-bottom: 20px; }
+  .conf-fill { height: 100%; border-radius: 99px; transition: width .6s ease; }
+  .conf-high { background: var(--green); }
+  .conf-med { background: var(--yellow); }
+  .conf-low { background: var(--red); }
+
+  .divider { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
+
+  .reasoning-section { margin-bottom: 20px; }
+  .reasoning-title { font-size: 11px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--text3); margin-bottom: 10px; }
+  .reasoning-text { font-size: 14px; color: var(--text2); line-height: 1.7; }
+
+  .edges-risks { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .edge-item { font-size: 13px; color: var(--text2); padding: 6px 0; border-bottom: 1px solid var(--border); }
+  .edge-item::before { content: '+ '; color: var(--green); font-weight: 700; }
+  .risk-item { font-size: 13px; color: var(--text2); padding: 6px 0; border-bottom: 1px solid var(--border); }
+  .risk-item::before { content: '− '; color: var(--red); font-weight: 700; }
+
+  /* STATS */
+  .stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 28px; }
+  .stat-box { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; text-align: center; }
+  .stat-num { font-size: 28px; font-weight: 800; color: var(--text); }
+  .stat-lbl { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text3); margin-top: 4px; }
+
+  /* PRIZEPICKS */
+  .pp-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 24px 28px;
+    margin-bottom: 20px;
+  }
+  .pp-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+  .pp-title { font-size: 11px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--green); }
+  .pp-sub { font-size: 13px; color: var(--text3); margin-bottom: 16px; }
+  .pp-items-wrap { max-height: 260px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; margin-top: 16px; }
+  .pp-item {
+    background: var(--card2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 14px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    transition: border-color .15s, background .15s;
+  }
+  .pp-item:hover { border-color: var(--green); background: var(--green-dim); }
+  .pp-item-player { font-size: 14px; font-weight: 600; color: var(--text); }
+  .pp-item-detail { font-size: 12px; color: var(--text3); margin-top: 2px; }
+  .pp-item-line { font-size: 16px; font-weight: 700; color: var(--green); margin-left: 16px; white-space: nowrap; }
+
+  /* EMPTY */
+  .empty { text-align: center; padding: 40px 20px; color: var(--text3); font-size: 14px; }
+
+  /* LOADING */
+  .dots { display: inline-flex; gap: 4px; align-items: center; }
+  .dots span { width: 5px; height: 5px; border-radius: 50%; background: #000; animation: pop 1.2s infinite; }
+  .dots span:nth-child(2) { animation-delay: .2s; }
+  .dots span:nth-child(3) { animation-delay: .4s; }
+  @keyframes pop { 0%,80%,100%{transform:scale(.5);opacity:.4} 40%{transform:scale(1);opacity:1} }
+
+  /* AUTOCOMPLETE */
+  .autocomplete-wrap { position: relative; flex: 1; }
+  .autocomplete-dropdown {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0; right: 0;
+    background: #1e1e1e;
+    border: 1px solid var(--border2);
+    border-radius: 10px;
+    z-index: 999;
+    overflow: hidden;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+    max-height: 280px;
+    overflow-y: auto;
+  }
+  .ac-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    cursor: pointer;
+    transition: background .1s;
+    border-bottom: 1px solid var(--border);
+  }
+  .ac-item:last-child { border-bottom: none; }
+  .ac-item:hover, .ac-item.active { background: var(--green-dim); }
+  .ac-avatar {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    background: var(--border2);
+    flex-shrink: 0;
+    object-fit: cover;
+  }
+  .ac-avatar-placeholder {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    background: var(--border2);
+    flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px;
+  }
+  .ac-name { font-size: 14px; font-weight: 600; color: var(--text); }
+  .ac-detail { font-size: 12px; color: var(--text3); margin-top: 1px; }
+
+  /* GAME DETAIL */
+  .game-row:hover { background: rgba(255,255,255,0.03); }
+  .game-row td:first-child { color: var(--text3); font-size: 10px; width: 16px; transition: color .15s; }
+  .game-row:hover td:first-child { color: var(--green); }
+  .game-detail-row { background: #0f0f0f; }
+  .game-detail-panel {
+    padding: 20px 24px;
+    border-top: 1px solid var(--border);
+    border-bottom: 2px solid var(--green);
+    animation: slideDown .2s ease;
+  }
+  @keyframes slideDown { from { opacity:0; transform:translateY(-6px); } to { opacity:1; transform:translateY(0); } }
+
+  /* CHAT */
+  .chat-msg { display: flex; }
+  .chat-msg.user { justify-content: flex-end; }
+  .chat-msg.ai { justify-content: flex-start; }
+  .chat-bubble {
+    max-width: 78%;
+    padding: 12px 16px;
+    border-radius: 14px;
+    font-size: 14px;
+    line-height: 1.65;
+  }
+  .ai-bubble {
+    background: var(--card2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-top-left-radius: 4px;
+  }
+  .user-bubble {
+    background: var(--green);
+    color: #000;
+    font-weight: 500;
+    border-top-right-radius: 4px;
+  }
+  .chat-typing {
+    display: inline-flex;
+    gap: 4px;
+    align-items: center;
+    padding: 4px 0;
+  }
+  .chat-typing span {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--text3);
+    animation: bounce 1.2s infinite;
+  }
+  .chat-typing span:nth-child(2) { animation-delay: .2s; }
+  .chat-typing span:nth-child(3) { animation-delay: .4s; }
+  .chat-suggestion {
+    background: var(--card2);
+    border: 1px solid var(--border);
+    border-radius: 99px;
+    padding: 6px 14px;
+    font-size: 12px;
+    color: var(--text2);
+    cursor: pointer;
+    font-family: inherit;
+    transition: all .15s;
+    white-space: nowrap;
+  }
+  .chat-suggestion:hover { border-color: var(--green); color: var(--green); background: var(--green-dim); }
+
+  /* SCROLLBAR */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 99px; }
+
+  /* ── PLAYER PROFILE CARD ── */
+  .player-profile-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 24px 28px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 24px;
+  }
+  .player-photo {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    object-fit: cover;
+    background: var(--card2);
+    border: 2px solid var(--border2);
+    flex-shrink: 0;
+  }
+  .player-photo-placeholder {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: var(--card2);
+    border: 2px solid var(--border2);
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 32px;
+  }
+  .player-profile-info { flex: 1; }
+  .player-profile-name { font-size: 22px; font-weight: 800; color: var(--text); margin-bottom: 4px; }
+  .player-profile-team { font-size: 14px; color: var(--text2); margin-bottom: 2px; }
+  .player-profile-meta { font-size: 12px; color: var(--text3); }
+  .player-profile-loading { font-size: 14px; color: var(--text3); }
+
+  /* ── STAT CATEGORY TABS ── */
+  .stat-cat-tabs {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+  }
+  .stat-cat-tab {
+    padding: 7px 18px;
+    border-radius: 99px;
+    border: 1px solid var(--border2);
+    background: transparent;
+    color: var(--text2);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all .15s;
+    white-space: nowrap;
+  }
+  .stat-cat-tab:hover { border-color: var(--green); color: var(--text); }
+  .stat-cat-tab.active {
+    background: var(--green);
+    border-color: var(--green);
+    color: #000;
+  }
+
+  /* ── AVERAGES ROW ── */
+  .averages-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  .avg-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px 16px;
+    text-align: center;
+  }
+  .avg-num {
+    font-size: 32px;
+    font-weight: 800;
+    color: var(--text);
+    line-height: 1;
+    margin-bottom: 6px;
+  }
+  .avg-lbl {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: .07em;
+    text-transform: uppercase;
+    color: var(--text3);
+  }
+
+  /* ── CHART ── */
+  .chart-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 20px 24px;
+    margin-bottom: 20px;
+    position: relative;
+  }
+  .chart-card canvas { display: block; }
+
+  /* ── GAMES TABLE ── */
+  .games-table-wrap {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+    margin-bottom: 20px;
+  }
+  .games-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+  .games-table th {
+    padding: 10px 14px;
+    text-align: left;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--text3);
+    border-bottom: 1px solid var(--border);
+    background: var(--card);
+    white-space: nowrap;
+  }
+  .games-table td {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text2);
+    white-space: nowrap;
+  }
+  .games-table tr:last-child td { border-bottom: none; }
+  .games-table tr:hover td { background: rgba(255,255,255,0.025); }
+  .result-w { color: var(--green); font-weight: 700; }
+  .result-l { color: var(--red); font-weight: 700; }
+  .result-d { color: var(--text3); font-weight: 700; }
+  .cell-over { color: var(--green); font-weight: 700; }
+
+  /* ── PROP LINE ROW ── */
+  .prop-line-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 24px 28px;
+    margin-bottom: 20px;
+  }
+  .prop-line-card .row4 { margin-bottom: 0; }
+
+  /* ── PLAYER SEARCH CARD (top of predict tab) ── */
+  .player-search-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 24px 28px;
+    margin-bottom: 20px;
+  }
+  .player-search-card .search-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text2);
+    margin-bottom: 12px;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+  }
+
+  /* ── DATA SECTION ── */
+  #player-data-section { display: none; }
+
+  @media (max-width: 640px) {
+    nav { padding: 14px 20px; }
+    .hero, .app-card { padding-left: 20px; padding-right: 20px; }
+    .row2, .row3, .row4, .edges-risks, .averages-row { grid-template-columns: 1fr 1fr; }
+    .stats-row { grid-template-columns: repeat(3, 1fr); }
+    .form-card, .pred-output, .pp-card { padding: 20px; }
+    .player-profile-card { flex-direction: column; text-align: center; }
+  }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <a class="nav-logo" href="#">
+    <div class="nav-logo-icon">&#9917;</div>
+    PickProphet
+  </a>
+  <div class="nav-links">
+    <a href="#" onclick="scrollToApp()">App</a>
+    <button onclick="toggleSettings()" style="background:none;border:1px solid var(--border2);border-radius:8px;padding:7px 14px;color:var(--text2);font-size:13px;cursor:pointer;font-family:inherit;transition:all .2s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text2)'">⚙ API Key</button>
+    <button class="nav-launch" onclick="scrollToApp()">Launch App &rarr;</button>
+  </div>
+</nav>
+
+<!-- API Key Settings Panel -->
+<div id="settings-panel" style="display:none;background:#111;border-bottom:1px solid var(--border);padding:14px 40px;">
+  <div style="max-width:900px;margin:0 auto;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+    <span style="font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);">Anthropic API Key</span>
+    <input type="password" id="api-key-input" placeholder="sk-ant-..." style="flex:1;min-width:280px;max-width:420px;font-family:monospace;font-size:13px;height:36px;padding:8px 12px;" oninput="saveApiKey(this.value)" />
+    <span id="api-key-status" style="font-size:12px;color:var(--text3);"></span>
+    <a href="https://console.anthropic.com/settings/keys" target="_blank" style="font-size:12px;color:var(--green);text-decoration:none;">Get a key →</a>
+  </div>
+</div>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-tag">// The Engine</div>
+  <h1>Your AI <span>Soccer Analyst</span></h1>
+</div>
+
+<!-- APP -->
+<div class="app-card" id="app">
+
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('train', this)">Train the Model</button>
+    <button class="tab" onclick="switchTab('predict', this)">Get Prediction</button>
+    <button class="tab" onclick="switchTab('history', this)">Pick History</button>
+    <button class="tab" onclick="switchTab('chat', this)" style="color:var(--green);">✦ Ask AI</button>
+  </div>
+
+  <!-- ── TRAIN ── -->
+  <div id="tab-train" class="section active">
+
+    <!-- Step 1: Search player -->
+    <div class="form-card" style="margin-bottom:16px;">
+      <div class="field-label" style="margin-bottom:10px;">Step 1 — Search a player to log their props</div>
+      <div style="display:flex;gap:8px;align-items:flex-start;">
+        <div class="autocomplete-wrap" style="flex:1;">
+          <input type="text" id="train-player-input" placeholder="e.g. Mohamed Salah, Bukayo Saka..." autocomplete="off"
+            oninput="onTrainPlayerInput(this.value)" onkeydown="onTrainPlayerKeydown(event)" style="font-size:15px;padding:13px 16px;" />
+          <div class="autocomplete-dropdown" id="train-ac-dropdown" style="display:none;"></div>
+        </div>
+      </div>
+      <div id="train-search-status" style="font-size:13px;color:var(--text3);margin-top:8px;"></div>
+    </div>
+
+    <!-- Slip Upload -->
+    <div class="form-card" style="margin-bottom:16px;border-style:dashed;" id="slip-upload-card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+        <div>
+          <div class="field-label" style="color:var(--green);margin-bottom:4px;">📸 Upload a Slip Photo</div>
+          <div style="font-size:13px;color:var(--text3);">Snap or screenshot your bet slip — AI reads it, you edit if needed, then save</div>
+        </div>
+      </div>
+
+      <!-- Drop zone -->
+      <div id="slip-drop-zone"
+        ondragover="event.preventDefault();this.style.borderColor='var(--green)'"
+        ondragleave="this.style.borderColor='var(--border2)'"
+        ondrop="handleSlipDrop(event)"
+        style="border:2px dashed var(--border2);border-radius:12px;padding:28px;text-align:center;transition:border-color .2s;position:relative;">
+        <input type="file" id="slip-file-input" accept="image/*" style="display:none;" onchange="handleSlipFile(this.files[0])" />
+
+        <!-- Empty state -->
+        <div id="slip-drop-content" onclick="document.getElementById('slip-file-input').click()" style="cursor:pointer;">
+          <div style="font-size:32px;margin-bottom:8px;">🖼️</div>
+          <div style="font-size:14px;color:var(--text2);font-weight:500;">Click or drag a slip photo here</div>
+          <div style="font-size:12px;color:var(--text3);margin-top:4px;">JPG, PNG, screenshot — any image works</div>
+        </div>
+
+        <!-- Preview + remove button -->
+        <div id="slip-preview-wrap" style="display:none;">
+          <img id="slip-preview" style="max-width:100%;max-height:300px;border-radius:8px;display:block;margin:0 auto;" />
+          <button onclick="clearSlipPhoto()" style="margin-top:12px;background:var(--red-dim);color:var(--red);border:1px solid var(--red);border-radius:8px;padding:7px 16px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;">🗑 Remove photo</button>
+        </div>
+      </div>
+
+      <div id="slip-status" style="margin-top:12px;font-size:13px;color:var(--text3);"></div>
+
+      <!-- Extracted bets (editable) -->
+      <div id="slip-results" style="display:none;margin-top:16px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+          <div class="field-label" style="color:var(--green);margin-bottom:0;">Bets found — edit if needed, then save:</div>
+          <button onclick="addBlankSlipBet()" style="background:none;border:1px solid var(--border2);border-radius:7px;padding:5px 12px;font-size:12px;color:var(--text2);cursor:pointer;font-family:inherit;">+ Add another bet</button>
+        </div>
+        <div id="slip-bets-list"></div>
+      </div>
+    </div>
+
+    <!-- Step 2: Recent games (hidden until player selected) -->
+    <div id="train-games-section" style="display:none;">
+      <div class="form-card" style="margin-bottom:16px;">
+        <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px;">
+          <img id="train-player-photo" style="width:44px;height:44px;border-radius:50%;object-fit:cover;border:2px solid var(--border2);" src="" onerror="this.style.display='none'" />
+          <div>
+            <div id="train-player-name" style="font-size:17px;font-weight:700;"></div>
+            <div id="train-player-meta" style="font-size:12px;color:var(--text3);margin-top:2px;"></div>
+          </div>
+        </div>
+        <div class="field-label" style="margin-bottom:10px;">Step 2 — Click a game to log a prop result</div>
+        <div id="train-games-list" style="display:flex;flex-direction:column;gap:8px;"></div>
+        <div id="train-games-loading" style="color:var(--text3);font-size:14px;padding:20px 0;">Loading recent games...</div>
+      </div>
+    </div>
+
+    <!-- Inline prop logger (appears when game clicked) -->
+    <div id="train-logger" style="display:none;">
+      <div class="form-card" style="border-color:var(--green);margin-bottom:16px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+          <div>
+            <div class="field-label" style="color:var(--green);margin-bottom:4px;">Log Prop Result</div>
+            <div id="logger-game-info" style="font-size:14px;font-weight:600;color:var(--text);"></div>
+          </div>
+          <button onclick="closeLogger()" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:18px;">✕</button>
+        </div>
+        <div class="row3" style="margin-bottom:14px;">
+          <div class="field">
+            <label class="field-label">Prop Type</label>
+            <select id="log-prop-type">
+              <optgroup label="⚽ Scoring">
+                <option value="Anytime Goal Scorer">Anytime Goal Scorer</option>
+                <option value="First Goal Scorer">First Goal Scorer</option>
+                <option value="Last Goal Scorer">Last Goal Scorer</option>
+                <option value="Goals Scored">Goals Scored (O/U)</option>
+                <option value="To Score or Assist">To Score or Assist</option>
+                <option value="Goal Involvements">Goal Involvements (O/U)</option>
+                <option value="Hat Trick">Hat Trick</option>
+              </optgroup>
+              <optgroup label="🎯 Shots">
+                <option value="Shots on Target">Shots on Target (O/U)</option>
+                <option value="Total Shots">Total Shots (O/U)</option>
+                <option value="Blocked Shots">Blocked Shots (O/U)</option>
+              </optgroup>
+              <optgroup label="🎁 Assists & Chances">
+                <option value="Assists">Assists (O/U)</option>
+                <option value="Key Passes">Key Passes (O/U)</option>
+                <option value="Chances Created">Chances Created (O/U)</option>
+                <option value="Big Chances Created">Big Chances Created (O/U)</option>
+              </optgroup>
+              <optgroup label="⚙️ Passing">
+                <option value="Passes Attempted">Passes Attempted (O/U)</option>
+                <option value="Passes Completed">Passes Completed (O/U)</option>
+                <option value="Pass Completion %">Pass Completion % (O/U)</option>
+                <option value="Long Balls Attempted">Long Balls Attempted (O/U)</option>
+                <option value="Long Balls Completed">Long Balls Completed (O/U)</option>
+                <option value="Crosses Attempted">Crosses Attempted (O/U)</option>
+                <option value="Crosses Completed">Crosses Completed (O/U)</option>
+                <option value="Progressive Passes">Progressive Passes (O/U)</option>
+              </optgroup>
+              <optgroup label="🛡️ Defensive">
+                <option value="Tackles">Tackles (O/U)</option>
+                <option value="Tackles Won">Tackles Won (O/U)</option>
+                <option value="Interceptions">Interceptions (O/U)</option>
+                <option value="Clearances">Clearances (O/U)</option>
+                <option value="Blocks">Blocks (O/U)</option>
+                <option value="Ball Recoveries">Ball Recoveries (O/U)</option>
+                <option value="Saves">Saves — GK (O/U)</option>
+                <option value="Goals Conceded">Goals Conceded — GK (O/U)</option>
+                <option value="Clean Sheet">Clean Sheet (Yes/No)</option>
+                <option value="Punches">Punches — GK (O/U)</option>
+                <option value="High Claims">High Claims — GK (O/U)</option>
+              </optgroup>
+              <optgroup label="🏃 Dribbles & Duels">
+                <option value="Dribbles Attempted">Dribbles Attempted (O/U)</option>
+                <option value="Dribbles Completed">Dribbles Completed (O/U)</option>
+                <option value="Duels Won">Duels Won (O/U)</option>
+                <option value="Aerial Duels Won">Aerial Duels Won (O/U)</option>
+                <option value="Ground Duels Won">Ground Duels Won (O/U)</option>
+                <option value="Ball Carries">Ball Carries (O/U)</option>
+                <option value="Progressive Carries">Progressive Carries (O/U)</option>
+              </optgroup>
+              <optgroup label="⚠️ Fouls & Discipline">
+                <option value="Fouls Committed">Fouls Committed (O/U)</option>
+                <option value="Fouls Drawn">Fouls Drawn (O/U)</option>
+                <option value="Yellow Card">Yellow Card (Yes/No)</option>
+                <option value="Red Card">Red Card (Yes/No)</option>
+              </optgroup>
+              <optgroup label="⏱️ Other">
+                <option value="Minutes Played">Minutes Played (O/U)</option>
+                <option value="Touches">Touches (O/U)</option>
+                <option value="Offsides">Offsides (O/U)</option>
+                <option value="Corners Won">Corners Won (O/U)</option>
+                <option value="Expected Goals">Expected Goals / xG (O/U)</option>
+                <option value="Expected Assists">Expected Assists / xA (O/U)</option>
+              </optgroup>
+            </select>
+          </div>
+          <div class="field">
+            <label class="field-label">Line</label>
+            <input type="number" id="log-line" placeholder="e.g. 2.5" step="0.5" />
+          </div>
+          <div class="field">
+            <label class="field-label">Direction</label>
+            <select id="log-direction">
+              <option value="Over">Over</option>
+              <option value="Under">Under</option>
+              <option value="Yes">Yes</option>
+              <option value="No">No</option>
+            </select>
+          </div>
+        </div>
+        <!-- Actual stat from SofaScore shown here -->
+        <div id="log-actual-stat" style="display:none;background:var(--card2);border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:13px;color:var(--text2);"></div>
+        <div class="row2" style="margin-bottom:14px;">
+          <div class="field">
+            <label class="field-label">Result</label>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
+              <button class="result-btn" id="rbtn-win" onclick="setLogResult('win',this)" style="padding:10px;border-radius:8px;border:1px solid var(--border);background:var(--card2);color:var(--text2);cursor:pointer;font-weight:600;font-size:13px;transition:all .15s;">✓ Win</button>
+              <button class="result-btn" id="rbtn-loss" onclick="setLogResult('loss',this)" style="padding:10px;border-radius:8px;border:1px solid var(--border);background:var(--card2);color:var(--text2);cursor:pointer;font-weight:600;font-size:13px;transition:all .15s;">✗ Loss</button>
+              <button class="result-btn" id="rbtn-pending" onclick="setLogResult('pending',this)" style="padding:10px;border-radius:8px;border:1px solid var(--border);background:var(--card2);color:var(--text2);cursor:pointer;font-weight:600;font-size:13px;transition:all .15s;">⏳ TBD</button>
+            </div>
+          </div>
+          <div class="field">
+            <label class="field-label">Odds (optional)</label>
+            <input type="text" id="log-odds" placeholder="-115" />
+          </div>
+        </div>
+        <div class="field" style="margin-bottom:14px;">
+          <label class="field-label">Why did you take this? (optional — helps AI learn)</label>
+          <textarea id="log-reasoning" placeholder="e.g. He's averaging 4.2 shots at home this season, facing a team ranked 28th in shots allowed..." style="min-height:70px;"></textarea>
+        </div>
+        <button class="btn-green" onclick="saveLoggedPick()" id="log-save-btn">+ Save to Training Data</button>
+      </div>
+    </div>
+
+    <!-- Training summary -->
+    <div id="train-summary" style="display:none;margin-bottom:16px;">
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px;">
+        <div class="stat-box"><div class="stat-num" id="ts-total">0</div><div class="stat-lbl">Total Picks</div></div>
+        <div class="stat-box"><div class="stat-num" id="ts-wins">0</div><div class="stat-lbl">Wins</div></div>
+        <div class="stat-box"><div class="stat-num" id="ts-rate">—</div><div class="stat-lbl">Win Rate</div></div>
+      </div>
+    </div>
+
+    <!-- Saved picks list -->
+    <div id="pick-list-container">
+      <div class="empty">No picks logged yet. Search a player above to get started.</div>
+    </div>
+  </div>
+
+  <!-- ── PREDICT ── -->
+  <div id="tab-predict" class="section">
+
+    <!-- PrizePicks -->
+    <div class="pp-card">
+      <div class="pp-header">
+        <span class="pp-title">&#9889; PrizePicks Live Props</span>
+      </div>
+      <div class="pp-sub">Fetch today's soccer props directly from PrizePicks and load them into the form below.</div>
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+        <button class="btn-outline" id="pp-btn" onclick="loadPrizePicks()">&#8635; Fetch Live Props</button>
+        <span id="pp-status" style="font-size:13px;color:var(--text3);"></span>
+      </div>
+      <div id="pp-list" style="display:none;">
+        <div class="section-label" style="margin-top:16px;">Click a prop to load it into the form</div>
+        <div class="pp-items-wrap" id="pp-items"></div>
+      </div>
+    </div>
+
+    <!-- PLAYER SEARCH -->
+    <div class="player-search-card">
+      <div class="search-title">Search a Player</div>
+      <div class="autocomplete-wrap">
+        <input type="text" id="pred-player" placeholder="e.g. Bukayo Saka, Erling Haaland..." autocomplete="off"
+          oninput="onPlayerInput(this.value)" onkeydown="onPlayerKeydown(event)" style="font-size:16px;padding:14px 18px;" />
+        <div class="autocomplete-dropdown" id="ac-dropdown" style="display:none;"></div>
+      </div>
+      <div id="player-search-status" style="font-size:13px;color:var(--text3);margin-top:10px;display:none;"></div>
+    </div>
+
+    <!-- PLAYER DATA SECTION (hidden until player selected) -->
+    <div id="player-data-section">
+
+      <!-- Player Profile Card -->
+      <div class="player-profile-card" id="player-profile-card">
+        <img id="player-photo" class="player-photo" src="" alt="" onerror="this.style.display='none';document.getElementById('player-photo-ph').style.display='flex'" />
+        <div class="player-photo-placeholder" id="player-photo-ph" style="display:none;">&#9917;</div>
+        <div class="player-profile-info">
+          <div class="player-profile-name" id="profile-name">Loading...</div>
+          <div class="player-profile-team" id="profile-team"></div>
+          <div class="player-profile-meta" id="profile-meta"></div>
+        </div>
+      </div>
+
+      <!-- Loading indicator -->
+      <div id="player-data-loading" style="text-align:center;padding:40px 20px;color:var(--text3);font-size:14px;display:none;">
+        Loading match data...
+      </div>
+
+      <!-- Stats content (hidden until data loaded) -->
+      <div id="player-stats-content" style="display:none;">
+
+        <!-- Stat Category Tabs -->
+        <div class="stat-cat-tabs">
+          <button class="stat-cat-tab active" onclick="switchStatTab('shooting', this)">Shooting</button>
+          <button class="stat-cat-tab" onclick="switchStatTab('passing', this)">Passing</button>
+          <button class="stat-cat-tab" onclick="switchStatTab('dribbling', this)">Dribbling &amp; Duels</button>
+          <button class="stat-cat-tab" onclick="switchStatTab('defensive', this)">Defensive</button>
+          <button class="stat-cat-tab" onclick="switchStatTab('discipline', this)">Discipline</button>
+        </div>
+
+        <!-- Averages Row -->
+        <div class="averages-row" id="averages-row"></div>
+
+        <!-- Bar Chart -->
+        <div class="chart-card">
+          <canvas id="games-chart" height="200"></canvas>
+        </div>
+
+        <!-- Last 8 Games Table -->
+        <div class="games-table-wrap">
+          <table class="games-table" id="games-table">
+            <thead id="games-table-head"></thead>
+            <tbody id="games-table-body"></tbody>
+          </table>
+        </div>
+
+      </div><!-- /player-stats-content -->
+
+      <!-- Prop line + AI Prediction -->
+      <div class="prop-line-card">
+        <div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--green);margin-bottom:16px;">Generate AI Prediction</div>
+        <div class="row2" style="margin-bottom:16px;">
+          <div class="field">
+            <label class="field-label">League</label>
+            <select id="pred-sport">
+              <option value="Premier League">Premier League</option>
+              <option value="La Liga">La Liga</option>
+              <option value="Bundesliga">Bundesliga</option>
+              <option value="Serie A">Serie A</option>
+              <option value="Ligue 1">Ligue 1</option>
+              <option value="Champions League">Champions League</option>
+              <option value="Europa League">Europa League</option>
+              <option value="MLS">MLS</option>
+              <option value="World Cup">World Cup</option>
+              <option value="International">International</option>
+            </select>
+          </div>
+          <div class="field">
+            <label class="field-label">Prop Type</label>
+            <select id="pred-prop">
+              <optgroup label="⚽ Scoring">
+                <option value="Anytime Goal Scorer">Anytime Goal Scorer</option>
+                <option value="First Goal Scorer">First Goal Scorer</option>
+                <option value="Last Goal Scorer">Last Goal Scorer</option>
+                <option value="Goals Scored">Goals Scored (O/U)</option>
+                <option value="To Score or Assist">To Score or Assist</option>
+                <option value="Goal Involvements">Goal Involvements (O/U)</option>
+                <option value="Hat Trick">Hat Trick</option>
+              </optgroup>
+              <optgroup label="🎯 Shots">
+                <option value="Shots on Target">Shots on Target (O/U)</option>
+                <option value="Total Shots">Total Shots (O/U)</option>
+                <option value="Blocked Shots">Blocked Shots (O/U)</option>
+              </optgroup>
+              <optgroup label="🎁 Assists &amp; Chances">
+                <option value="Assists">Assists (O/U)</option>
+                <option value="Key Passes">Key Passes (O/U)</option>
+                <option value="Chances Created">Chances Created (O/U)</option>
+                <option value="Big Chances Created">Big Chances Created (O/U)</option>
+              </optgroup>
+              <optgroup label="⚙️ Passing">
+                <option value="Passes Attempted">Passes Attempted (O/U)</option>
+                <option value="Passes Completed">Passes Completed (O/U)</option>
+                <option value="Pass Completion %">Pass Completion % (O/U)</option>
+                <option value="Long Balls Attempted">Long Balls Attempted (O/U)</option>
+                <option value="Long Balls Completed">Long Balls Completed (O/U)</option>
+                <option value="Crosses Attempted">Crosses Attempted (O/U)</option>
+                <option value="Crosses Completed">Crosses Completed (O/U)</option>
+                <option value="Progressive Passes">Progressive Passes (O/U)</option>
+              </optgroup>
+              <optgroup label="🛡️ Defensive">
+                <option value="Tackles">Tackles (O/U)</option>
+                <option value="Tackles Won">Tackles Won (O/U)</option>
+                <option value="Interceptions">Interceptions (O/U)</option>
+                <option value="Clearances">Clearances (O/U)</option>
+                <option value="Blocks">Blocks (O/U)</option>
+                <option value="Ball Recoveries">Ball Recoveries (O/U)</option>
+                <option value="Saves">Saves &mdash; GK (O/U)</option>
+                <option value="Goals Conceded">Goals Conceded &mdash; GK (O/U)</option>
+                <option value="Clean Sheet">Clean Sheet (Yes/No)</option>
+                <option value="Punches">Punches &mdash; GK (O/U)</option>
+                <option value="High Claims">High Claims &mdash; GK (O/U)</option>
+              </optgroup>
+              <optgroup label="🏃 Dribbles &amp; Duels">
+                <option value="Dribbles Attempted">Dribbles Attempted (O/U)</option>
+                <option value="Dribbles Completed">Dribbles Completed (O/U)</option>
+                <option value="Duels Won">Duels Won (O/U)</option>
+                <option value="Aerial Duels Won">Aerial Duels Won (O/U)</option>
+                <option value="Ground Duels Won">Ground Duels Won (O/U)</option>
+                <option value="Ball Carries">Ball Carries (O/U)</option>
+                <option value="Progressive Carries">Progressive Carries (O/U)</option>
+              </optgroup>
+              <optgroup label="⚠️ Fouls &amp; Discipline">
+                <option value="Fouls Committed">Fouls Committed (O/U)</option>
+                <option value="Fouls Drawn">Fouls Drawn (O/U)</option>
+                <option value="Yellow Card">Yellow Card (Yes/No)</option>
+                <option value="Red Card">Red Card (Yes/No)</option>
+              </optgroup>
+              <optgroup label="⏱️ Other">
+                <option value="Minutes Played">Minutes Played (O/U)</option>
+                <option value="Touches">Touches (O/U)</option>
+                <option value="Offsides">Offsides (O/U)</option>
+                <option value="Corners Won">Corners Won (O/U)</option>
+                <option value="Expected Goals">Expected Goals / xG (O/U)</option>
+                <option value="Expected Assists">Expected Assists / xA (O/U)</option>
+              </optgroup>
+            </select>
+          </div>
+        </div>
+        <div class="row3" style="margin-bottom:16px;">
+          <div class="field">
+            <label class="field-label">Line</label>
+            <input type="number" id="pred-line" placeholder="2.5" step="0.5" oninput="onPropLineChange()" />
+          </div>
+          <div class="field">
+            <label class="field-label">Odds</label>
+            <input type="text" id="pred-odds" placeholder="-115" />
+          </div>
+          <div class="field" style="grid-column:span 1;">
+            <!-- spacer -->
+          </div>
+        </div>
+        <div class="field mb">
+          <label class="field-label">Context (matchup, injuries, form, etc.)</label>
+          <textarea id="pred-context" placeholder="e.g. Facing a team that allows 14 shots per game. Playing at home in a must-win. No injuries listed..." style="min-height:80px;"></textarea>
+        </div>
+        <button class="btn-green" id="pred-btn" onclick="generatePrediction()">&#10022; Generate AI Prediction</button>
+      </div>
+
+      <div id="prediction-result"></div>
+
+    </div><!-- /player-data-section -->
+
+  </div><!-- /tab-predict -->
+
+  <!-- ── HISTORY ── -->
+  <div id="tab-history" class="section">
+    <div class="stats-row">
+      <div class="stat-box"><div class="stat-num" id="stat-total">0</div><div class="stat-lbl">Total Picks</div></div>
+      <div class="stat-box"><div class="stat-num" id="stat-wins">0</div><div class="stat-lbl">Wins</div></div>
+      <div class="stat-box"><div class="stat-num" id="stat-rate">&mdash;</div><div class="stat-lbl">Win Rate</div></div>
+    </div>
+    <div id="history-list"><div class="empty">No picks in history yet.</div></div>
+  </div>
+
+  <!-- ── ASK AI CHAT ── -->
+  <div id="tab-chat" class="section">
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:16px;overflow:hidden;display:flex;flex-direction:column;height:600px;">
+
+      <!-- Chat header -->
+      <div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
+        <div>
+          <div style="font-size:15px;font-weight:700;color:var(--text);">✦ Pick Prophet AI</div>
+          <div style="font-size:12px;color:var(--text3);margin-top:2px;">Ask anything about your picks, players, props, or betting strategy</div>
+        </div>
+        <button onclick="clearChat()" style="background:none;border:1px solid var(--border2);border-radius:7px;padding:5px 12px;font-size:12px;color:var(--text3);cursor:pointer;font-family:inherit;transition:all .2s;" onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--text3)'">Clear chat</button>
+      </div>
+
+      <!-- Messages area -->
+      <div id="chat-messages" style="flex:1;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:14px;">
+        <!-- Welcome message -->
+        <div class="chat-msg ai">
+          <div class="chat-bubble ai-bubble">
+            <div style="font-size:13px;font-weight:600;color:var(--green);margin-bottom:6px;">Pick Prophet AI</div>
+            Hey! I'm your soccer betting analyst. I have access to all your training picks and win rates. Ask me anything — pick advice, player analysis, whether a line has value, or strategy questions.<br><br>
+            <span style="color:var(--text3);font-size:12px;">Try: "Should I take Salah over 3.5 shots tonight?" or "What's my best performing prop type?"</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Suggested questions (shown when chat is empty) -->
+      <div id="chat-suggestions" style="padding:0 20px 12px;display:flex;gap:8px;flex-wrap:wrap;flex-shrink:0;">
+        <button class="chat-suggestion" onclick="sendSuggestion(this)">What's my best prop type?</button>
+        <button class="chat-suggestion" onclick="sendSuggestion(this)">Which players am I most profitable on?</button>
+        <button class="chat-suggestion" onclick="sendSuggestion(this)">Is home or away better for my picks?</button>
+        <button class="chat-suggestion" onclick="sendSuggestion(this)">Give me a betting strategy based on my data</button>
+      </div>
+
+      <!-- Input area -->
+      <div style="padding:14px 16px;border-top:1px solid var(--border);display:flex;gap:10px;flex-shrink:0;background:var(--card);">
+        <textarea id="chat-input" placeholder="Ask about a pick, player, prop, or strategy..." rows="1"
+          style="flex:1;min-height:42px;max-height:120px;resize:none;border-radius:10px;padding:10px 14px;font-size:14px;line-height:1.5;font-family:inherit;"
+          onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendChatMessage();}"
+          oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,120)+'px'"></textarea>
+        <button onclick="sendChatMessage()" id="chat-send-btn" style="background:var(--green);color:#000;border:none;border-radius:10px;padding:0 18px;font-size:18px;cursor:pointer;font-weight:700;flex-shrink:0;transition:opacity .2s;" onmouseover="this.style.opacity='.8'" onmouseout="this.style.opacity='1'">↑</button>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /app-card -->
+
+<script>
+// ── Global state ────────────────────────────────────────────────────────────
+let picks = JSON.parse(localStorage.getItem('pickprophet_soccer') || '[]');
+let _acTimer = null;
+let _acIndex = -1;
+let _acResults = [];
+let _selectedPlayerId = null;
+let _selectedPlayerEntity = null;
+let _gameData = []; // cached game rows
+let _activeStatTab = 'shooting';
+let _chartInstance = null;
+
+const SS = 'https://api.sofascore.com/api/v1';
+
+// ── Stat category definitions ───────────────────────────────────────────────
+const STAT_TABS = {
+  shooting: {
+    label: 'Shooting',
+    primaryStat: 'totalShots',
+    primaryLabel: 'Total Shots',
+    avgStats: [
+      { key: 'totalShots', label: 'Total Shots' },
+      { key: 'onTargetScoringAttempt', label: 'On Target' },
+      { key: 'shotOffTarget', label: 'Off Target' },
+      { key: 'expectedGoals', label: 'xG' },
+    ],
+    tableStats: [
+      { key: 'totalShots', label: 'Shots' },
+      { key: 'onTargetScoringAttempt', label: 'On Target' },
+      { key: 'shotOffTarget', label: 'Off Target' },
+      { key: 'blockedScoringAttempt', label: 'Blocked' },
+      { key: 'expectedGoals', label: 'xG' },
+    ],
+  },
+  passing: {
+    label: 'Passing',
+    primaryStat: 'totalPass',
+    primaryLabel: 'Passes',
+    avgStats: [
+      { key: 'totalPass', label: 'Passes' },
+      { key: 'accuratePass', label: 'Accurate' },
+      { key: 'keyPass', label: 'Key Passes' },
+      { key: 'goalAssist', label: 'Assists' },
+    ],
+    tableStats: [
+      { key: 'totalPass', label: 'Passes' },
+      { key: 'accuratePass', label: 'Accurate' },
+      { key: 'keyPass', label: 'Key Pass' },
+      { key: 'goalAssist', label: 'Assist' },
+      { key: 'totalCross', label: 'Crosses' },
+      { key: 'accurateCross', label: 'Acc. Cross' },
+      { key: 'expectedAssists', label: 'xA' },
+    ],
+  },
+  dribbling: {
+    label: 'Dribbling & Duels',
+    primaryStat: 'wonContest',
+    primaryLabel: 'Dribbles Won',
+    avgStats: [
+      { key: 'wonContest', label: 'Dribbles Won' },
+      { key: 'totalContest', label: 'Dribbles Att.' },
+      { key: 'duelWon', label: 'Duels Won' },
+      { key: 'aerialWon', label: 'Aerial Won' },
+    ],
+    tableStats: [
+      { key: 'wonContest', label: 'Drib. Won' },
+      { key: 'totalContest', label: 'Drib. Att.' },
+      { key: 'duelWon', label: 'Duel Won' },
+      { key: 'duelLost', label: 'Duel Lost' },
+      { key: 'aerialWon', label: 'Aerial Won' },
+      { key: 'ballCarriesCount', label: 'Ball Carries' },
+    ],
+  },
+  defensive: {
+    label: 'Defensive',
+    primaryStat: 'ballRecovery',
+    primaryLabel: 'Ball Recoveries',
+    avgStats: [
+      { key: 'ballRecovery', label: 'Ball Rec.' },
+      { key: 'totalTackle', label: 'Tackles' },
+      { key: 'interceptionWon', label: 'Interceptions' },
+      { key: 'wonTackle', label: 'Tackles Won' },
+    ],
+    tableStats: [
+      { key: 'totalTackle', label: 'Tackles' },
+      { key: 'wonTackle', label: 'Won Tackle' },
+      { key: 'interceptionWon', label: 'Interceptions' },
+      { key: 'ballRecovery', label: 'Ball Rec.' },
+      { key: 'clearanceOffLine', label: 'Clearances' },
+    ],
+  },
+  discipline: {
+    label: 'Discipline',
+    primaryStat: 'minutesPlayed',
+    primaryLabel: 'Minutes',
+    avgStats: [
+      { key: 'minutesPlayed', label: 'Minutes' },
+      { key: 'wasFouled', label: 'Fouled' },
+      { key: 'fouls', label: 'Fouls Comm.' },
+      { key: 'yellowCard', label: 'Yellow Cards' },
+    ],
+    tableStats: [
+      { key: 'minutesPlayed', label: 'Mins' },
+      { key: 'wasFouled', label: 'Fouled' },
+      { key: 'fouls', label: 'Fouls' },
+      { key: 'totalOffside', label: 'Offside' },
+      { key: 'yellowCard', label: 'Yellow' },
+    ],
+  },
+};
+
+// ── Utility ─────────────────────────────────────────────────────────────────
+function scrollToApp() {
+  document.getElementById('app').scrollIntoView({ behavior: 'smooth' });
+}
+
+function switchTab(name, el) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  el.classList.add('active');
+  if (name === 'history') renderHistory();
+}
+
+function save() {
+  try { localStorage.setItem('pickprophet_soccer', JSON.stringify(picks)); } catch(e) {}
+}
+
+function fmtDate(ts) {
+  const d = new Date(ts * 1000);
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+function statVal(stats, key) {
+  if (!stats) return null;
+  const v = stats[key];
+  return (v !== undefined && v !== null) ? v : null;
+}
+
+function fmtStat(val) {
+  if (val === null || val === undefined) return '—';
+  if (typeof val === 'number') return Number.isInteger(val) ? val : val.toFixed(2);
+  return val;
+}
+
+function avg(arr) {
+  const valid = arr.filter(v => v !== null && v !== undefined);
+  if (!valid.length) return null;
+  const s = valid.reduce((a, b) => a + parseFloat(b), 0);
+  return s / valid.length;
+}
+
+// ── Training tab ─────────────────────────────────────────────────────────────
+let _trainPlayerId = null, _trainPlayerName = '', _trainGames = [], _logGameIdx = null, _logResult = 'pending';
+let _trainAcResults = [], _trainAcIndex = -1, _trainAcTimer = null;
+
+// Autocomplete for train tab
+function onTrainPlayerInput(val) {
+  _trainPlayerId = null;
+  clearTimeout(_trainAcTimer);
+  if (val.length < 2) { closeTrainDropdown(); return; }
+  _trainAcTimer = setTimeout(() => fetchTrainSuggestions(val), 280);
+}
+function onTrainPlayerKeydown(e) {
+  const dd = document.getElementById('train-ac-dropdown');
+  const items = dd.querySelectorAll('.ac-item');
+  if (e.key === 'ArrowDown') { e.preventDefault(); _trainAcIndex = Math.min(_trainAcIndex+1, items.length-1); items.forEach((el,i)=>el.classList.toggle('active',i===_trainAcIndex)); }
+  else if (e.key === 'ArrowUp') { e.preventDefault(); _trainAcIndex = Math.max(_trainAcIndex-1,-1); items.forEach((el,i)=>el.classList.toggle('active',i===_trainAcIndex)); }
+  else if (e.key === 'Enter') { e.preventDefault(); if (_trainAcIndex >= 0 && items[_trainAcIndex]) items[_trainAcIndex].click(); else closeTrainDropdown(); }
+  else if (e.key === 'Escape') { closeTrainDropdown(); }
+}
+async function fetchTrainSuggestions(q) {
+  try {
+    const r = await fetch(`${SS}/search/all?q=${encodeURIComponent(q)}`);
+    const d = await r.json();
+    _trainAcResults = (d.results||[]).filter(r=>r.type==='player').slice(0,8);
+    renderTrainDropdown(_trainAcResults);
+  } catch(e) { closeTrainDropdown(); }
+}
+function renderTrainDropdown(results) {
+  const dd = document.getElementById('train-ac-dropdown');
+  if (!results.length) { closeTrainDropdown(); return; }
+  _trainAcIndex = -1;
+  dd.innerHTML = results.map((r,i) => {
+    const p = r.entity;
+    return `<div class="ac-item" onclick="selectTrainPlayer(${i})">
+      <img class="ac-avatar" src="${SS}/player/${p.id}/image" onerror="this.style.display='none'" />
+      <div><div class="ac-name">${p.name}</div><div class="ac-detail">${[p.team?.name,p.position].filter(Boolean).join(' · ')}</div></div>
+    </div>`;
+  }).join('');
+  dd.style.display = 'block';
+  document.addEventListener('click', outsideTrainClick, { once: true });
+}
+function outsideTrainClick(e) { if (!e.target.closest('#train-player-input') && !e.target.closest('#train-ac-dropdown')) closeTrainDropdown(); }
+function closeTrainDropdown() { const dd = document.getElementById('train-ac-dropdown'); if(dd) dd.style.display='none'; _trainAcIndex=-1; }
+
+async function selectTrainPlayer(i) {
+  const r = _trainAcResults[i];
+  if (!r) return;
+  const p = r.entity;
+  _trainPlayerId = p.id;
+  _trainPlayerName = p.name;
+  document.getElementById('train-player-input').value = p.name;
+  closeTrainDropdown();
+
+  // Show player header
+  document.getElementById('train-games-section').style.display = 'block';
+  document.getElementById('train-player-photo').src = `${SS}/player/${p.id}/image`;
+  document.getElementById('train-player-name').textContent = p.name + (p.team ? ' · ' + p.team.name : '');
+  document.getElementById('train-player-meta').textContent = p.position || '';
+  document.getElementById('train-games-loading').style.display = 'block';
+  document.getElementById('train-games-list').innerHTML = '';
+  document.getElementById('train-logger').style.display = 'none';
+  document.getElementById('train-search-status').textContent = '';
+
+  try {
+    const evResp = await fetch(`${SS}/player/${p.id}/events/last/0`);
+    const evData = await evResp.json();
+    const events = (evData.events||[])
+      .filter(ev => ev.status?.type === 'finished')
+      .sort((a,b) => b.startTimestamp - a.startTimestamp)
+      .slice(0, 8);
+
+    if (!events.length) throw new Error('No recent games found.');
+
+    const statsResults = await Promise.all(
+      events.map(ev => fetch(`${SS}/event/${ev.id}/player/${p.id}/statistics`).then(r=>r.json()).catch(()=>({})))
+    );
+
+    _trainGames = events.map((ev, idx) => {
+      const stats = statsResults[idx]?.statistics || {};
+      const isHome = ev.homeTeam?.id === p.team?.id;
+      const opponent = isHome ? ev.awayTeam?.name : ev.homeTeam?.name;
+      const myScore = isHome ? ev.homeScore?.current : ev.awayScore?.current;
+      const oppScore = isHome ? ev.awayScore?.current : ev.homeScore?.current;
+      let result = 'D'; if (myScore > oppScore) result='W'; else if (myScore < oppScore) result='L';
+      return { date: fmtDate(ev.startTimestamp), opponent: opponent||'Unknown', result, score: myScore+'–'+oppScore, ha: isHome?'H':'A', stats, eventId: ev.id };
+    });
+
+    renderTrainGames();
+  } catch(err) {
+    document.getElementById('train-search-status').textContent = 'Could not load games: ' + (err.message||'');
+  } finally {
+    document.getElementById('train-games-loading').style.display = 'none';
+  }
+}
+
+function renderTrainGames() {
+  const list = document.getElementById('train-games-list');
+  list.innerHTML = _trainGames.map((g, i) => {
+    const rc = g.result==='W'?'result-w':g.result==='L'?'result-l':'result-d';
+    // Check if already logged for this game
+    const alreadyLogged = picks.filter(p => p.trainGameIdx === i && p.trainPlayer === _trainPlayerName).length;
+    const badge = alreadyLogged ? `<span style="font-size:11px;color:var(--green);font-weight:600;">${alreadyLogged} logged</span>` : '';
+    return `<div onclick="openLogger(${i})" style="cursor:pointer;background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;transition:border-color .15s;" onmouseover="this.style.borderColor='var(--green)'" onmouseout="this.style.borderColor='var(--border)'">
+      <div style="display:flex;align-items:center;gap:14px;">
+        <div style="text-align:center;min-width:36px;">
+          <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;">${g.ha}</div>
+          <span class="${rc}" style="font-size:13px;font-weight:700;padding:2px 8px;border-radius:6px;">${g.result}</span>
+        </div>
+        <div>
+          <div style="font-size:14px;font-weight:600;color:var(--text);">vs ${g.opponent}</div>
+          <div style="font-size:12px;color:var(--text3);margin-top:2px;">${g.date} · ${g.score}</div>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;">
+        ${badge}
+        <span style="color:var(--green);font-size:18px;font-weight:300;">+</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function openLogger(idx) {
+  _logGameIdx = idx;
+  _logResult = 'pending';
+  const g = _trainGames[idx];
+  const rc = g.result==='W'?'result-w':g.result==='L'?'result-l':'result-d';
+
+  document.getElementById('logger-game-info').innerHTML =
+    `vs <strong>${g.opponent}</strong> &nbsp;<span class="${rc}" style="padding:2px 8px;border-radius:6px;font-size:13px;">${g.result} ${g.score}</span>&nbsp; <span style="color:var(--text3);font-size:12px;">${g.date} · ${g.ha==='H'?'Home':'Away'}</span>`;
+
+  // Reset result buttons
+  ['win','loss','pending'].forEach(r => {
+    const btn = document.getElementById('rbtn-'+r);
+    btn.style.background = 'var(--card2)';
+    btn.style.color = 'var(--text2)';
+    btn.style.borderColor = 'var(--border)';
+  });
+  document.getElementById('log-line').value = '';
+  document.getElementById('log-odds').value = '';
+  document.getElementById('log-reasoning').value = '';
+  document.getElementById('log-actual-stat').style.display = 'none';
+
+  const logger = document.getElementById('train-logger');
+  logger.style.display = 'block';
+  logger.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+  // Watch prop type change to show actual stat
+  document.getElementById('log-prop-type').onchange = showActualStat;
+  document.getElementById('log-line').oninput = showActualStat;
+  showActualStat();
+}
+
+// Map prop type → SofaScore stat key for auto-showing actual value
+const PROP_TO_STAT = {
+  'Goals Scored': 'goals', 'Anytime Goal Scorer': 'goals',
+  'To Score or Assist': null, 'Goal Involvements': null,
+  'Shots on Target': 'onTargetScoringAttempt', 'Total Shots': 'totalShots',
+  'Assists': 'goalAssist', 'Key Passes': 'keyPass',
+  'Passes Attempted': 'totalPass', 'Passes Completed': 'accuratePass',
+  'Crosses Attempted': 'totalCross', 'Tackles': 'totalTackle',
+  'Interceptions': 'interceptionWon', 'Saves': 'saves',
+  'Dribbles Completed': 'wonContest', 'Duels Won': 'duelWon',
+  'Aerial Duels Won': 'aerialWon', 'Fouls Committed': 'fouls',
+  'Yellow Card': 'yellowCard', 'Minutes Played': 'minutesPlayed',
+};
+
+function showActualStat() {
+  if (_logGameIdx === null) return;
+  const propType = document.getElementById('log-prop-type').value;
+  const line = parseFloat(document.getElementById('log-line').value);
+  const g = _trainGames[_logGameIdx];
+  const key = PROP_TO_STAT[propType];
+  const el = document.getElementById('log-actual-stat');
+  if (key && g.stats[key] != null) {
+    const actual = g.stats[key];
+    const hitText = !isNaN(line) ? (actual >= line ? '✅ Hit (Over)' : '❌ Missed (Under)') : '';
+    el.innerHTML = `<strong style="color:var(--text)">Actual stat this game:</strong> <span style="color:var(--green);font-weight:700;">${actual}</span> ${propType.replace('(O/U)','').replace('(Yes/No)','')} ${hitText ? '· ' + hitText : ''}`;
+    el.style.display = 'block';
+  } else {
+    el.style.display = 'none';
+  }
+}
+
+function setLogResult(result, btn) {
+  _logResult = result;
+  ['win','loss','pending'].forEach(r => {
+    const b = document.getElementById('rbtn-'+r);
+    b.style.background = 'var(--card2)'; b.style.color = 'var(--text2)'; b.style.borderColor = 'var(--border)';
+  });
+  if (result==='win') { btn.style.background='var(--green-dim)'; btn.style.color='var(--green)'; btn.style.borderColor='var(--green)'; }
+  else if (result==='loss') { btn.style.background='var(--red-dim)'; btn.style.color='var(--red)'; btn.style.borderColor='var(--red)'; }
+  else { btn.style.background='rgba(255,255,255,0.08)'; btn.style.color='var(--text)'; btn.style.borderColor='var(--border2)'; }
+}
+
+function closeLogger() {
+  document.getElementById('train-logger').style.display = 'none';
+  _logGameIdx = null;
+}
+
+function saveLoggedPick() {
+  if (_logGameIdx === null) { alert('No game selected.'); return; }
+  const propType = document.getElementById('log-prop-type').value;
+  const line = document.getElementById('log-line').value;
+  const direction = document.getElementById('log-direction').value;
+  const odds = document.getElementById('log-odds').value.trim();
+  const reasoning = document.getElementById('log-reasoning').value.trim();
+  if (!line) { alert('Enter a line value.'); return; }
+
+  const g = _trainGames[_logGameIdx];
+  // Auto-detect actual stat value for context
+  const key = PROP_TO_STAT[propType];
+  const actualVal = (key && g.stats[key] != null) ? g.stats[key] : null;
+  const autoReasoning = reasoning || (actualVal !== null ? `Actual ${propType}: ${actualVal}` : '');
+
+  const pick = {
+    id: Date.now(),
+    player: _trainPlayerName,
+    playerId: _trainPlayerId,
+    sport: 'Soccer',
+    propType,
+    line: parseFloat(line),
+    direction,
+    odds,
+    reasoning: autoReasoning,
+    result: _logResult,
+    date: g.date,
+    opponent: g.opponent,
+    ha: g.ha,
+    matchResult: g.result,
+    score: g.score,
+    actualStat: actualVal,
+    gameStats: g.stats, // store full game stats for AI context
+    trainPlayer: _trainPlayerName,
+    trainGameIdx: _logGameIdx,
+  };
+  picks.unshift(pick);
+  save();
+
+  renderPickList();
+  renderTrainSummary();
+  renderTrainGames(); // refresh badges
+
+  // Flash the save button
+  const btn = document.getElementById('log-save-btn');
+  btn.textContent = '✓ Saved!';
+  btn.style.background = '#22c55e';
+  setTimeout(() => { btn.textContent = '+ Save to Training Data'; btn.style.background=''; }, 1500);
+}
+
+function renderTrainSummary() {
+  const wins = picks.filter(p=>p.result==='win').length;
+  const losses = picks.filter(p=>p.result==='loss').length;
+  const settled = wins+losses;
+  document.getElementById('ts-total').textContent = picks.length;
+  document.getElementById('ts-wins').textContent = wins;
+  document.getElementById('ts-rate').textContent = settled>0 ? Math.round(wins/settled*100)+'%' : '—';
+  document.getElementById('train-summary').style.display = picks.length ? 'block' : 'none';
+}
+
+function renderPickList() {
+  const c = document.getElementById('pick-list-container');
+  if (!picks.length) { c.innerHTML = '<div class="empty">No picks logged yet. Search a player above to get started.</div>'; return; }
+  c.innerHTML = '<div class="section-label" style="margin-bottom:12px;">Saved Training Data (' + picks.length + ' picks)</div>' +
+    picks.slice(0, 15).map(p => `
+      <div class="pick-item">
+        <div style="flex:1">
+          <div class="pick-league">${p.player} · ${p.date}${p.opponent ? ' vs ' + p.opponent : ''}</div>
+          <div class="pick-player">${p.direction} ${p.line} ${p.propType}</div>
+          <div class="pick-detail">${p.ha ? p.ha + ' · ' : ''}${p.matchResult ? 'Game: ' + p.matchResult + ' · ' : ''}${p.actualStat != null ? 'Actual: ' + p.actualStat : ''}${p.odds ? ' · ' + p.odds : ''}</div>
+          ${p.reasoning ? `<div class="pick-reasoning">${p.reasoning.slice(0,120)}${p.reasoning.length>120?'…':''}</div>` : ''}
+        </div>
+        <div class="pick-actions">
+          <span class="badge ${p.result==='win'?'badge-win':p.result==='loss'?'badge-loss':'badge-pending'}">${p.result==='win'?'Win':p.result==='loss'?'Loss':'Pending'}</span>
+          <button class="remove-btn" onclick="removePick(${p.id})">remove</button>
+        </div>
+      </div>`).join('');
+}
+
+function removePick(id) {
+  picks = picks.filter(p => p.id !== id);
+  save();
+  renderPickList();
+  renderTrainSummary();
+}
+
+function renderHistory() {
+  const wins = picks.filter(p => p.result === 'win').length;
+  const losses = picks.filter(p => p.result === 'loss').length;
+  const settled = wins + losses;
+  document.getElementById('stat-total').textContent = picks.length;
+  document.getElementById('stat-wins').textContent = wins;
+  document.getElementById('stat-rate').textContent = settled > 0 ? Math.round(wins/settled*100) + '%' : '—';
+  const hl = document.getElementById('history-list');
+  if (!picks.length) { hl.innerHTML = '<div class="empty">No picks in history yet.</div>'; return; }
+  hl.innerHTML = picks.map(p => `
+    <div class="pick-item">
+      <div style="flex:1">
+        <div class="pick-league">${p.sport} · ${p.date}</div>
+        <div class="pick-player">${p.player}</div>
+        <div class="pick-detail">${p.direction} ${p.line} ${p.propType}${p.odds ? ' · ' + p.odds : ''}</div>
+      </div>
+      <span class="badge ${p.result==='win'?'badge-win':p.result==='loss'?'badge-loss':'badge-pending'}">${p.result==='win'?'Win':p.result==='loss'?'Loss':'Pending'}</span>
+    </div>`).join('');
+}
+
+// ── Autocomplete ─────────────────────────────────────────────────────────────
+function onPlayerInput(val) {
+  _selectedPlayerId = null;
+  _selectedPlayerEntity = null;
+  clearTimeout(_acTimer);
+  if (val.length < 2) { closeDropdown(); return; }
+  _acTimer = setTimeout(() => fetchSuggestions(val), 280);
+}
+
+function onPlayerKeydown(e) {
+  const dd = document.getElementById('ac-dropdown');
+  const items = dd.querySelectorAll('.ac-item');
+  if (e.key === 'ArrowDown') { e.preventDefault(); _acIndex = Math.min(_acIndex+1, items.length-1); highlightAc(items); }
+  else if (e.key === 'ArrowUp') { e.preventDefault(); _acIndex = Math.max(_acIndex-1, -1); highlightAc(items); }
+  else if (e.key === 'Enter') { e.preventDefault(); if (_acIndex >= 0 && items[_acIndex]) items[_acIndex].click(); else closeDropdown(); }
+  else if (e.key === 'Escape') { closeDropdown(); }
+}
+
+function highlightAc(items) {
+  items.forEach((el, i) => el.classList.toggle('active', i === _acIndex));
+  if (_acIndex >= 0) items[_acIndex]?.scrollIntoView({ block: 'nearest' });
+}
+
+async function fetchSuggestions(q) {
+  try {
+    const resp = await fetch(`${SS}/search/all?q=${encodeURIComponent(q)}`);
+    const data = await resp.json();
+    _acResults = (data.results || []).filter(r => r.type === 'player').slice(0, 8);
+    renderDropdown(_acResults);
+  } catch(e) { closeDropdown(); }
+}
+
+function renderDropdown(results) {
+  const dd = document.getElementById('ac-dropdown');
+  if (!results.length) { closeDropdown(); return; }
+  _acIndex = -1;
+  dd.innerHTML = results.map((r, i) => {
+    const p = r.entity;
+    const team = p.team?.name || '';
+    const pos = p.position || '';
+    const imgId = p.id;
+    return `<div class="ac-item" onclick="selectPlayer(${i})">
+      <img class="ac-avatar" src="${SS}/player/${imgId}/image" onerror="this.style.display='none';this.nextSibling.style.display='flex'" />
+      <div class="ac-avatar-placeholder" style="display:none">&#9917;</div>
+      <div>
+        <div class="ac-name">${p.name}</div>
+        <div class="ac-detail">${[team, pos].filter(Boolean).join(' · ')}</div>
+      </div>
+    </div>`;
+  }).join('');
+  dd.style.display = 'block';
+  document.addEventListener('click', outsideClick, { once: true });
+}
+
+function outsideClick(e) {
+  if (!e.target.closest('.autocomplete-wrap')) closeDropdown();
+}
+
+function selectPlayer(i) {
+  const r = _acResults[i];
+  if (!r) return;
+  const p = r.entity;
+  _selectedPlayerId = p.id;
+  _selectedPlayerEntity = p;
+  document.getElementById('pred-player').value = p.name;
+  closeDropdown();
+  loadPlayerData(p.id, p.name, p);
+}
+
+function closeDropdown() {
+  const dd = document.getElementById('ac-dropdown');
+  if (dd) dd.style.display = 'none';
+  _acIndex = -1;
+}
+
+// ── loadPlayerData ─────────────────────────────────────────────────────────
+async function loadPlayerData(playerId, playerName, playerEntity) {
+  const dataSection = document.getElementById('player-data-section');
+  const loadingEl = document.getElementById('player-data-loading');
+  const statsContent = document.getElementById('player-stats-content');
+  const statusEl = document.getElementById('player-search-status');
+
+  // Show section, show loading
+  dataSection.style.display = 'block';
+  statsContent.style.display = 'none';
+  loadingEl.style.display = 'block';
+  statusEl.style.display = 'block';
+  statusEl.textContent = 'Loading match data...';
+
+  // Populate profile card immediately
+  const photoEl = document.getElementById('player-photo');
+  const photoPh = document.getElementById('player-photo-ph');
+  photoEl.src = `${SS}/player/${playerId}/image`;
+  photoEl.style.display = 'block';
+  photoPh.style.display = 'none';
+  document.getElementById('profile-name').textContent = playerName;
+  const entity = playerEntity || _selectedPlayerEntity || {};
+  document.getElementById('profile-team').textContent = entity.team?.name || '';
+  document.getElementById('profile-meta').textContent = entity.position ? 'Position: ' + entity.position : '';
+
+  // Reset stat tab
+  _activeStatTab = 'shooting';
+  document.querySelectorAll('.stat-cat-tab').forEach((t, i) => t.classList.toggle('active', i === 0));
+
+  try {
+    // 1. Get last events
+    const eventsResp = await fetch(`${SS}/player/${playerId}/events/last/0`);
+    const eventsData = await eventsResp.json();
+    const events = (eventsData.events || [])
+      .filter(ev => ev.status?.type === 'finished')
+      .sort((a, b) => b.startTimestamp - a.startTimestamp)
+      .slice(0, 8);
+
+    if (!events.length) throw new Error('No recent matches found for this player.');
+
+    // 2. Get per-match stats in parallel
+    const statsPromises = events.map(ev =>
+      fetch(`${SS}/event/${ev.id}/player/${playerId}/statistics`)
+        .then(r => r.json())
+        .catch(() => ({ statistics: {} }))
+    );
+    const statsResults = await Promise.all(statsPromises);
+
+    // 3. Build game rows
+    _gameData = events.map((ev, idx) => {
+      const stats = statsResults[idx]?.statistics || {};
+
+      // Determine home/away: need player team id
+      const playerTeamId = entity.team?.id || null;
+      const isHome = playerTeamId ? (ev.homeTeam?.id === playerTeamId) : true;
+      const opponent = isHome ? ev.awayTeam?.name : ev.homeTeam?.name;
+      const myScore = isHome ? (ev.homeScore?.current ?? 0) : (ev.awayScore?.current ?? 0);
+      const oppScore = isHome ? (ev.awayScore?.current ?? 0) : (ev.homeScore?.current ?? 0);
+      let result = 'D';
+      if (myScore > oppScore) result = 'W';
+      else if (myScore < oppScore) result = 'L';
+      const score = myScore + '–' + oppScore;
+
+      return {
+        date: fmtDate(ev.startTimestamp),
+        opponent: opponent || 'Unknown',
+        result,
+        score,
+        ha: isHome ? 'H' : 'A',
+        stats,
+      };
+    });
+
+    // Try to get season/league from seasons endpoint
+    try {
+      const seasResp = await fetch(`${SS}/player/${playerId}/statistics/seasons`);
+      const seasData = await seasResp.json();
+      const tournaments = seasData.uniqueTournamentSeasons || [];
+      if (tournaments.length) {
+        const t = tournaments[0];
+        const s = t.seasons?.[0];
+        document.getElementById('profile-meta').textContent =
+          (entity.position ? entity.position + ' · ' : '') +
+          (t.uniqueTournament?.name || '') +
+          (s?.name ? ' ' + s.name : '');
+      }
+    } catch(e2) {}
+
+    // 4. Render UI
+    loadingEl.style.display = 'none';
+    statsContent.style.display = 'block';
+    statusEl.textContent = events.length + ' recent matches loaded';
+
+    renderStatView();
+
+  } catch(err) {
+    loadingEl.style.display = 'none';
+    statsContent.style.display = 'none';
+    statusEl.textContent = 'Error: ' + (err.message || 'Could not load match data.');
+  }
+}
+
+// ── Stat Tab Switching ──────────────────────────────────────────────────────
+function switchStatTab(tabKey, el) {
+  _activeStatTab = tabKey;
+  document.querySelectorAll('.stat-cat-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  renderStatView();
+}
+
+function renderStatView() {
+  renderAverages();
+  renderChart();
+  renderTable();
+}
+
+// ── Averages ─────────────────────────────────────────────────────────────────
+function renderAverages() {
+  const cfg = STAT_TABS[_activeStatTab];
+  const container = document.getElementById('averages-row');
+  const html = cfg.avgStats.map(s => {
+    const vals = _gameData.map(g => statVal(g.stats, s.key));
+    const a = avg(vals);
+    const display = a === null ? '—' : (Number.isInteger(a) ? a : a.toFixed(2));
+    return `<div class="avg-card">
+      <div class="avg-num">${display}</div>
+      <div class="avg-lbl">${s.label}</div>
+    </div>`;
+  }).join('');
+  container.innerHTML = html;
+}
+
+// ── Chart ────────────────────────────────────────────────────────────────────
+function renderChart() {
+  const cfg = STAT_TABS[_activeStatTab];
+  const propLine = parseFloat(document.getElementById('pred-line').value) || null;
+
+  const labels = _gameData.map(g => {
+    const opp = g.opponent.length > 12 ? g.opponent.slice(0, 11) + '…' : g.opponent;
+    return opp + '\n' + g.date;
+  });
+  const values = _gameData.map(g => {
+    const v = statVal(g.stats, cfg.primaryStat);
+    return v !== null ? v : 0;
+  });
+  const colors = values.map(v => propLine !== null ? (v >= propLine ? '#3dff8f' : '#5ba3ff') : '#5ba3ff');
+
+  const canvas = document.getElementById('games-chart');
+  if (_chartInstance) {
+    _chartInstance.destroy();
+    _chartInstance = null;
+  }
+
+  const datasets = [{
+    label: cfg.primaryLabel,
+    data: values,
+    backgroundColor: colors,
+    borderRadius: 6,
+    borderSkipped: false,
+  }];
+
+  if (propLine !== null) {
+    datasets.push({
+      type: 'line',
+      label: 'Prop Line',
+      data: Array(values.length).fill(propLine),
+      borderColor: '#ff4d4d',
+      borderDash: [6, 3],
+      borderWidth: 2,
+      pointRadius: 0,
+      fill: false,
+    });
+  }
+
+  _chartInstance = new Chart(canvas, {
+    type: 'bar',
+    data: { labels, datasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            title: (items) => _gameData[items[0].dataIndex]?.opponent || '',
+            label: (item) => item.dataset.label + ': ' + item.raw,
+          },
+        },
+      },
+      scales: {
+        x: {
+          ticks: { color: '#555', font: { size: 11 } },
+          grid: { color: 'rgba(255,255,255,0.04)' },
+        },
+        y: {
+          beginAtZero: true,
+          ticks: { color: '#555', font: { size: 11 } },
+          grid: { color: 'rgba(255,255,255,0.08)' },
+        },
+      },
+    },
+  });
+}
+
+function onPropLineChange() {
+  if (_gameData.length) renderChart();
+}
+
+// ── Games Table ──────────────────────────────────────────────────────────────
+function renderTable() {
+  const cfg = STAT_TABS[_activeStatTab];
+  const propLine = parseFloat(document.getElementById('pred-line').value) || null;
+
+  const head = document.getElementById('games-table-head');
+  const body = document.getElementById('games-table-body');
+
+  // Header
+  let thHtml = '<tr><th></th><th>Date</th><th>Opponent</th><th>Result</th><th>H/A</th>';
+  for (const s of cfg.tableStats) thHtml += `<th>${s.label}</th>`;
+  thHtml += '</tr>';
+  head.innerHTML = thHtml;
+
+  // Rows
+  let tbHtml = '';
+  _gameData.forEach((g, idx) => {
+    const resClass = g.result === 'W' ? 'result-w' : g.result === 'L' ? 'result-l' : 'result-d';
+    tbHtml += `<tr class="game-row" onclick="toggleGameDetail(${idx}, this)" style="cursor:pointer;">
+      <td style="color:var(--text3);font-size:11px;padding-right:4px;">▶</td>
+      <td>${g.date}</td>
+      <td style="color:var(--text)">${g.opponent}</td>
+      <td><span class="${resClass}">${g.result}</span> <span style="color:var(--text3);font-size:12px">${g.score}</span></td>
+      <td style="color:var(--text3)">${g.ha}</td>`;
+    for (const s of cfg.tableStats) {
+      const v = statVal(g.stats, s.key);
+      const display = fmtStat(v);
+      const isOver = propLine !== null && v !== null && v >= propLine;
+      tbHtml += `<td class="${isOver ? 'cell-over' : ''}">${display}</td>`;
+    }
+    tbHtml += '</tr>';
+    // Detail row (hidden by default)
+    tbHtml += `<tr class="game-detail-row" id="detail-${idx}" style="display:none;">
+      <td colspan="100" style="padding:0;">
+        <div class="game-detail-panel" id="detail-panel-${idx}"></div>
+      </td>
+    </tr>`;
+  });
+  body.innerHTML = tbHtml;
+}
+
+// All stat groups for the full detail view
+const ALL_STAT_GROUPS = [
+  { label: 'Shooting', stats: [
+    { key: 'totalShots', label: 'Total Shots' },
+    { key: 'onTargetScoringAttempt', label: 'Shots on Target' },
+    { key: 'shotOffTarget', label: 'Shots off Target' },
+    { key: 'blockedScoringAttempt', label: 'Blocked Shots' },
+    { key: 'bigChanceMissed', label: 'Big Chances Missed' },
+    { key: 'expectedGoals', label: 'xG', dec: 2 },
+    { key: 'expectedGoalsOnTarget', label: 'xGOT', dec: 2 },
+  ]},
+  { label: 'Passing', stats: [
+    { key: 'totalPass', label: 'Passes Attempted' },
+    { key: 'accuratePass', label: 'Passes Completed' },
+    { key: 'keyPass', label: 'Key Passes' },
+    { key: 'goalAssist', label: 'Assists' },
+    { key: 'totalCross', label: 'Crosses' },
+    { key: 'accurateCross', label: 'Accurate Crosses' },
+    { key: 'totalLongBalls', label: 'Long Balls' },
+    { key: 'accurateLongBalls', label: 'Accurate Long Balls' },
+    { key: 'expectedAssists', label: 'xA', dec: 2 },
+  ]},
+  { label: 'Dribbling & Duels', stats: [
+    { key: 'wonContest', label: 'Dribbles Won' },
+    { key: 'totalContest', label: 'Dribbles Attempted' },
+    { key: 'duelWon', label: 'Duels Won' },
+    { key: 'duelLost', label: 'Duels Lost' },
+    { key: 'aerialWon', label: 'Aerial Duels Won' },
+    { key: 'ballCarriesCount', label: 'Ball Carries' },
+  ]},
+  { label: 'Defensive', stats: [
+    { key: 'totalTackle', label: 'Tackles' },
+    { key: 'wonTackle', label: 'Tackles Won' },
+    { key: 'interceptionWon', label: 'Interceptions' },
+    { key: 'ballRecovery', label: 'Ball Recoveries' },
+    { key: 'clearanceOffLine', label: 'Clearances' },
+    { key: 'saves', label: 'Saves (GK)' },
+  ]},
+  { label: 'Discipline & Other', stats: [
+    { key: 'minutesPlayed', label: 'Minutes Played' },
+    { key: 'touches', label: 'Touches' },
+    { key: 'wasFouled', label: 'Fouls Drawn' },
+    { key: 'fouls', label: 'Fouls Committed' },
+    { key: 'totalOffside', label: 'Offsides' },
+    { key: 'yellowCard', label: 'Yellow Card' },
+    { key: 'rating', label: 'Rating', dec: 1 },
+  ]},
+];
+
+function toggleGameDetail(idx, rowEl) {
+  const detailRow = document.getElementById(`detail-${idx}`);
+  const panel = document.getElementById(`detail-panel-${idx}`);
+  const arrow = rowEl.querySelector('td:first-child');
+  const isOpen = detailRow.style.display !== 'none';
+
+  // Close all others
+  document.querySelectorAll('.game-detail-row').forEach(r => r.style.display = 'none');
+  document.querySelectorAll('.game-row td:first-child').forEach(a => a.textContent = '▶');
+
+  if (isOpen) return; // just toggle off
+
+  const g = _gameData[idx];
+  const resClass = g.result === 'W' ? 'result-w' : g.result === 'L' ? 'result-l' : 'result-d';
+
+  let html = `<div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap;">
+    <div>
+      <div style="font-size:16px;font-weight:700;color:var(--text)">${g.opponent}</div>
+      <div style="font-size:12px;color:var(--text3);margin-top:2px;">${g.date} · ${g.ha === 'H' ? 'Home' : 'Away'}</div>
+    </div>
+    <span class="${resClass}" style="font-size:18px;font-weight:800;padding:6px 14px;border-radius:8px;">${g.result} ${g.score}</span>
+    ${g.stats.rating ? `<span style="background:var(--green-dim);color:var(--green);font-size:13px;font-weight:700;padding:4px 12px;border-radius:8px;">Rating: ${Number(g.stats.rating).toFixed(1)}</span>` : ''}
+  </div>`;
+
+  html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;">';
+  for (const group of ALL_STAT_GROUPS) {
+    const rows = group.stats.filter(s => g.stats[s.key] != null);
+    if (!rows.length) continue;
+    html += `<div style="background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:14px;">
+      <div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--green);margin-bottom:10px;">${group.label}</div>`;
+    for (const s of rows) {
+      const v = g.stats[s.key];
+      const display = s.dec ? Number(v).toFixed(s.dec) : v;
+      html += `<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--border);">
+        <span style="font-size:12px;color:var(--text2);">${s.label}</span>
+        <span style="font-size:13px;font-weight:600;color:var(--text);">${display}</span>
+      </div>`;
+    }
+    html += '</div>';
+  }
+  html += '</div>';
+
+  panel.innerHTML = html;
+  detailRow.style.display = 'table-row';
+  arrow.textContent = '▼';
+  detailRow.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+// ── AI Prediction ─────────────────────────────────────────────────────────────
+// ── Live SofaScore context fetcher ───────────────────────────────────────────
+// Maps prop type → SofaScore stat keys for season averages + per-game display
+const PROP_TO_SOFA_KEYS = {
+  'Shots on Target':    ['onTargetScoringAttempt','totalShots','goals'],
+  'Total Shots':        ['totalShots','onTargetScoringAttempt','goals'],
+  'Goals Scored':       ['goals','totalShots','onTargetScoringAttempt','expectedGoals'],
+  'Anytime Goal Scorer':['goals','totalShots','onTargetScoringAttempt','expectedGoals'],
+  'Assists':            ['goalAssist','keyPass','expectedAssists'],
+  'Key Passes':         ['keyPass','goalAssist','totalPass'],
+  'Passes Attempted':   ['totalPass','accuratePass','accuratePassesPercentage'],
+  'Passes Completed':   ['accuratePasses','totalPass','accuratePassesPercentage'],
+  'Tackles':            ['totalTackle','wonTackle','interceptionWon'],
+  'Interceptions':      ['interceptionWon','totalTackle','ballRecovery'],
+  'Clearances':         ['clearanceOffLine','totalTackle','interceptionWon'],
+  'Blocks':             ['blockedScoringAttempt','totalTackle','interceptionWon'],
+  'Saves':              ['saves','goalsConcededInsideTheBox','goalsConcededOutsideTheBox'],
+  'Dribbles Completed': ['wonContest','totalContest','duelWon'],
+  'Duels Won':          ['duelWon','duelLost','aerialWon'],
+  'Aerial Duels Won':   ['aerialWon','duelWon','totalTackle'],
+  'Fouls Committed':    ['fouls','yellowCard','wasFouled'],
+  'Fouls Drawn':        ['wasFouled','fouls'],
+  'Yellow Card':        ['yellowCard','fouls'],
+  'Minutes Played':     ['minutesPlayed'],
+  'Touches':            ['touches','totalPass','wonContest'],
+  'Chances Created':    ['keyPass','goalAssist','bigChancesCreated'],
+};
+
+function statLabel(key) {
+  const map = {
+    onTargetScoringAttempt:'Shots on Target', totalShots:'Total Shots', goals:'Goals',
+    goalAssist:'Assists', keyPass:'Key Passes', totalPass:'Passes Attempted',
+    accuratePass:'Passes Completed', accuratePassesPercentage:'Pass Acc%',
+    totalTackle:'Tackles', wonTackle:'Tackles Won', interceptionWon:'Interceptions',
+    clearanceOffLine:'Clearances', blockedScoringAttempt:'Blocks',
+    ballRecovery:'Ball Recoveries', saves:'Saves', wonContest:'Dribbles Won',
+    totalContest:'Dribbles Att', duelWon:'Duels Won', duelLost:'Duels Lost',
+    aerialWon:'Aerial Won', fouls:'Fouls', yellowCard:'Yellow Cards',
+    wasFouled:'Fouls Drawn', minutesPlayed:'Minutes', touches:'Touches',
+    keyPasses:'Key Passes', bigChancesCreated:'Big Chances', expectedGoals:'xG',
+    expectedAssists:'xA', goalsConcededInsideTheBox:'Goals Conceded (inside)',
+  };
+  return map[key] || key;
+}
+
+async function fetchLiveSofaScoreContext(playerName, propType, line) {
+  // 1. Search for player
+  const searchResp = await fetch(`${SS}/search/all?q=${encodeURIComponent(playerName)}`);
+  const searchData = await searchResp.json();
+  const playerResult = (searchData.results || []).find(r => r.type === 'player');
+  if (!playerResult) return 'Player not found on SofaScore.';
+
+  const player = playerResult.entity;
+  const playerId = player.id;
+  const teamId = player.team?.id;
+  const teamName = player.team?.name || 'Unknown Team';
+
+  // 2. Get seasons to find best current season
+  const seasonsResp = await fetch(`${SS}/player/${playerId}/statistics/seasons`);
+  const seasonsData = await seasonsResp.json();
+  const typesMap = seasonsData.typesMap || {};
+  const tournaments = seasonsData.uniqueTournamentSeasons || [];
+
+  let bestTournId = null, bestSeasonId = null;
+  for (const t of tournaments) {
+    const tid = String(t.uniqueTournament.id);
+    const tSeasons = typesMap[tid] || {};
+    for (const s of t.seasons) {
+      const types = tSeasons[s.id] || [];
+      if (types.includes('home') && types.includes('away')) {
+        bestTournId = tid;
+        bestSeasonId = s.id;
+        break;
+      }
+    }
+    if (bestTournId) break;
+  }
+
+  const keys = PROP_TO_SOFA_KEYS[propType] || ['totalShots','goals','goalAssist','totalPass','totalTackle'];
+
+  let seasonSection = '';
+  if (bestTournId && bestSeasonId) {
+    // 3. Fetch overall, home, away season stats in parallel
+    const [oRes, hRes, aRes] = await Promise.all([
+      fetch(`${SS}/player/${playerId}/unique-tournament/${bestTournId}/season/${bestSeasonId}/statistics/overall`),
+      fetch(`${SS}/player/${playerId}/unique-tournament/${bestTournId}/season/${bestSeasonId}/statistics/home`),
+      fetch(`${SS}/player/${playerId}/unique-tournament/${bestTournId}/season/${bestSeasonId}/statistics/away`),
+    ]);
+    const [o, h, a] = await Promise.all([oRes.json(), hRes.json(), aRes.json()]);
+    const os = o.statistics || {}, hs = h.statistics || {}, as_ = a.statistics || {};
+    const oApps = os.appearances || 1, hApps = hs.appearances || 1, aApps = as_.appearances || 1;
+
+    const tournName = tournaments.find(t => String(t.uniqueTournament.id) === bestTournId)?.uniqueTournament.name || '';
+    const seasonName = tournaments.find(t => String(t.uniqueTournament.id) === bestTournId)?.seasons.find(s => s.id === bestSeasonId)?.name || '';
+
+    const statsRows = keys.map(k => {
+      const ov = os[k] != null ? (os[k]/oApps).toFixed(2) : '—';
+      const hv = hs[k] != null ? (hs[k]/hApps).toFixed(2) : '—';
+      const av = as_[k] != null ? (as_[k]/aApps).toFixed(2) : '—';
+      return `    ${statLabel(k)}: Overall ${ov}/game | Home ${hv}/game | Away ${av}/game`;
+    }).join('\n');
+
+    seasonSection = `SEASON STATS (${seasonName}, ${tournName}) — ${playerName} (${teamName}):
+  Appearances: ${oApps} total (${hApps} home, ${aApps} away)
+  Relevant stats per game:
+${statsRows}`;
+  }
+
+  // 4. Fetch last 8 games
+  const eventsResp = await fetch(`${SS}/player/${playerId}/events/last/0`);
+  const eventsData = await eventsResp.json();
+  const events = (eventsData.events || [])
+    .filter(ev => ev.status?.type === 'finished')
+    .sort((a, b) => b.startTimestamp - a.startTimestamp)
+    .slice(0, 8);
+
+  let gamesSection = '';
+  if (events.length) {
+    const gameStats = await Promise.all(
+      events.map(ev => fetch(`${SS}/event/${ev.id}/player/${playerId}/statistics`).then(r => r.json()).catch(() => ({})))
+    );
+
+    let overCount = 0, totalGames = 0;
+    const gameLines = events.map((ev, i) => {
+      const s = gameStats[i]?.statistics || {};
+      const isHome = ev.homeTeam?.id === teamId;
+      const opponent = isHome ? ev.awayTeam?.name : ev.homeTeam?.name;
+      const myScore = isHome ? ev.homeScore?.current : ev.awayScore?.current;
+      const oppScore = isHome ? ev.awayScore?.current : ev.homeScore?.current;
+      const result = myScore > oppScore ? 'W' : myScore < oppScore ? 'L' : 'D';
+
+      const statVals = keys.slice(0, 3).map(k => s[k] != null ? `${statLabel(k)}: ${s[k]}` : null).filter(Boolean).join(', ');
+      const primaryVal = s[keys[0]];
+      const hitLine = line && primaryVal != null ? (primaryVal >= line ? `✅ Over (${primaryVal})` : `❌ Under (${primaryVal})`) : (primaryVal != null ? String(primaryVal) : '—');
+
+      if (line && primaryVal != null) {
+        totalGames++;
+        if (primaryVal >= line) overCount++;
+      }
+
+      return `    ${fmtDate(ev.startTimestamp)} vs ${opponent||'?'} (${result}, ${isHome?'H':'A'}): ${statVals} | Line ${line}: ${hitLine}`;
+    }).join('\n');
+
+    const hitRate = totalGames > 0 ? `${overCount}/${totalGames} games hit Over ${line} (${Math.round(overCount/totalGames*100)}%)` : '';
+
+    gamesSection = `LAST ${events.length} GAMES — ${propType}${hitRate ? ` | HIT RATE vs line ${line}: ${hitRate}` : ''}:
+${gameLines}`;
+  }
+
+  return [seasonSection, gamesSection].filter(Boolean).join('\n\n');
+}
+
+async function generatePrediction() {
+  const playerName = document.getElementById('pred-player').value.trim();
+  const sport = document.getElementById('pred-sport').value;
+  const propType = document.getElementById('pred-prop').value;
+  const line = document.getElementById('pred-line').value;
+  const odds = document.getElementById('pred-odds').value.trim();
+  const context = document.getElementById('pred-context').value.trim();
+  if (!playerName || !line) { alert('Fill in player and line.'); return; }
+
+  const btn = document.getElementById('pred-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<div class="dots"><span></span><span></span><span></span></div> Analyzing...';
+
+  const resultDiv = document.getElementById('prediction-result');
+  resultDiv.innerHTML = '<div class="pred-output"><div style="font-size:14px;color:var(--text3)">⚡ Fetching live stats from SofaScore...</div></div>';
+
+  // Auto-fetch SofaScore stats for this player (even if not viewed in stats tab)
+  let statsContext = '';
+  try {
+    statsContext = await fetchLiveSofaScoreContext(playerName, propType, parseFloat(line));
+  } catch(e) {
+    // Fall back to cached game data if live fetch fails
+    if (_gameData.length) {
+      const cfg = STAT_TABS[_activeStatTab];
+      const recent = _gameData.slice(0, 5).map(g => {
+        const statSummary = cfg.tableStats.map(s => `${s.label}: ${fmtStat(statVal(g.stats, s.key))}`).join(', ');
+        return `vs ${g.opponent} (${g.date}, ${g.result}): ${statSummary}`;
+      }).join('\n');
+      statsContext = `RECENT MATCH DATA (cached):\n${recent}`;
+    }
+  }
+  resultDiv.innerHTML = '<div class="pred-output"><div style="font-size:14px;color:var(--text3)">🧠 AI is analyzing patterns and live stats...</div></div>';
+
+  // Smart training data analysis
+  const allPicks = picks.slice(0, 100);
+  const allSettled = allPicks.filter(p => p.result === 'win' || p.result === 'loss');
+
+  // ── Player + prop specific history ──
+  const playerPropPicks = allPicks.filter(p =>
+    p.player?.toLowerCase() === playerName.toLowerCase() && p.propType === propType
+  );
+  const playerPropSettled = playerPropPicks.filter(p => p.result === 'win' || p.result === 'loss');
+  const playerPropWins = playerPropSettled.filter(p => p.result === 'win').length;
+  const playerPropRate = playerPropSettled.length > 0 ? Math.round(playerPropWins / playerPropSettled.length * 100) : null;
+
+  // ── Home vs Away hit rate for this player + prop ──
+  const homeSettled = playerPropSettled.filter(p => p.ha === 'H');
+  const awaySettled = playerPropSettled.filter(p => p.ha === 'A');
+  const homeRate = homeSettled.length > 0 ? Math.round(homeSettled.filter(p=>p.result==='win').length / homeSettled.length * 100) : null;
+  const awayRate = awaySettled.length > 0 ? Math.round(awaySettled.filter(p=>p.result==='win').length / awaySettled.length * 100) : null;
+
+  // ── Line value analysis: group by line bucket ──
+  const lineBuckets = {};
+  playerPropSettled.forEach(p => {
+    const bucket = p.line;
+    if (!lineBuckets[bucket]) lineBuckets[bucket] = { w:0, l:0 };
+    p.result === 'win' ? lineBuckets[bucket].w++ : lineBuckets[bucket].l++;
+  });
+  const lineAnalysis = Object.entries(lineBuckets)
+    .sort((a,b) => a[0]-b[0])
+    .map(([l, {w,l:ls}]) => `    Line ${l}: ${w}W ${ls}L (${Math.round(w/(w+ls)*100)}%)`)
+    .join('\n');
+
+  // ── Prop type overall ──
+  const propTypePicks = allPicks.filter(p => p.propType === propType);
+  const propTypeSettled = propTypePicks.filter(p => p.result === 'win' || p.result === 'loss');
+  const propTypeRate = propTypeSettled.length > 0 ? Math.round(propTypeSettled.filter(p=>p.result==='win').length / propTypeSettled.length * 100) : null;
+
+  // ── Extract reasoning patterns from ALL settled picks ──
+  // Group by result and extract common reasoning signals
+  const winningReasons = allSettled.filter(p=>p.result==='win' && p.reasoning).map(p=>p.reasoning).join(' | ');
+  const losingReasons = allSettled.filter(p=>p.result==='loss' && p.reasoning).map(p=>p.reasoning).join(' | ');
+
+  // ── Detailed pick history for this player + prop ──
+  const playerPropHistory = playerPropPicks.slice(0, 15).map(p =>
+    `  [${p.result.toUpperCase()}] ${p.direction} ${p.line} | vs ${p.opponent||'?'} | ${p.ha==='H'?'Home':'Away'} | ${p.date}${p.actualStat != null ? ` | Actual stat: ${p.actualStat}` : ''}${p.reasoning ? `\n       Reason: "${p.reasoning}"` : ''}`
+  ).join('\n');
+
+  // ── Recent games stat context from SofaScore ──
+  // (statsContext is already computed above)
+
+  const prompt = `You are Pick Prophet AI — a soccer betting model trained on this bettor's real pick history. Your job is NOT to give generic advice. You must extract the SPECIFIC LOGIC and PATTERNS from the training data below, then apply that exact same logic to the new prop being analyzed.
+
+═══════════════════════════════════════════
+STEP 1: UNDERSTAND THE TRAINING DATA
+═══════════════════════════════════════════
+
+PLAYER: ${playerName} | PROP: ${propType} | ANALYZING LINE: ${line}
+
+Historical results for this exact player + prop type:
+${playerPropPicks.length > 0 ? playerPropHistory : '  No history yet for this player/prop combo.'}
+
+HIT RATES:
+- This player (${propType}): ${playerPropRate !== null ? playerPropRate + '%' : 'No data'} (${playerPropSettled.length} settled)
+  - At HOME: ${homeRate !== null ? homeRate + '%' : 'No data'} (${homeSettled.length} games)
+  - AWAY: ${awayRate !== null ? awayRate + '%' : 'No data'} (${awaySettled.length} games)
+${lineAnalysis ? `- By line:\n${lineAnalysis}` : ''}
+- All players on ${propType}: ${propTypeRate !== null ? propTypeRate + '%' : 'No data'} (${propTypeSettled.length} picks)
+
+REASONING PATTERNS FROM WINNING PICKS:
+${winningReasons ? `"${winningReasons.slice(0, 800)}"` : 'No reasoning logged yet — add reasoning to your training picks for better accuracy.'}
+
+REASONING PATTERNS FROM LOSING PICKS:
+${losingReasons ? `"${losingReasons.slice(0, 400)}"` : 'None logged.'}
+
+═══════════════════════════════════════════
+STEP 2: PLAYER'S ACTUAL RECENT STATS
+═══════════════════════════════════════════
+${statsContext || 'No recent match data available — search the player in Get Prediction first.'}
+
+═══════════════════════════════════════════
+STEP 3: THE NEW PROP TO EVALUATE
+═══════════════════════════════════════════
+- Player: ${playerName}
+- League: ${sport}
+- Prop: ${propType} ${direction || 'Over'} ${line}
+- Odds: ${odds || 'not provided'}
+- Additional context: ${context || 'none provided'}
+
+═══════════════════════════════════════════
+STEP 4: YOUR ANALYSIS PROCESS
+═══════════════════════════════════════════
+1. Extract the KEY FACTORS that caused wins in the training data (opponent strength, home/away, line value, recent form, etc.)
+2. Check if those same factors are PRESENT or ABSENT for this new prop
+3. Look at the player's actual recent stats — do they support the pick?
+4. Give a recommendation based on pattern match + stats, NOT guesswork
+5. Be honest — if the data says fade, say fade. If there's not enough data, say so and base it on the stats alone.
+
+Respond in JSON only:
+{
+  "recommendation": "Over" or "Under" or "Yes" or "No",
+  "confidence": number 1-100,
+  "reasoning": "Specific 4-6 sentence analysis. Reference actual patterns from training data by name. Cite the actual stats from recent games. Explain WHY this pick aligns or doesn't align with historical winning patterns.",
+  "pattern_match": "High" or "Medium" or "Low" (how closely this prop matches historical winning conditions),
+  "key_factors": ["specific factor 1 from training data", "specific stat factor 2", "factor 3"],
+  "risks": ["specific risk 1", "risk 2"],
+  "value_rating": "High Value" or "Standard" or "Fade",
+  "data_confidence": "Strong" or "Moderate" or "Limited" (based on sample size of training data)
+}`;
+
+  try {
+    const apiKey = getApiKey();
+    if (!apiKey) {
+      resultDiv.innerHTML = '<div class="pred-output"><div style="font-size:14px;color:var(--yellow)">⚠️ Add your Anthropic API key first — click ⚙ API Key in the nav bar.</div></div>';
+      btn.disabled = false; btn.innerHTML = '✦ Generate Prediction'; return;
+    }
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: claudeHeaders(),
+      body: JSON.stringify({ model: 'claude-opus-4-6', max_tokens: 1000, messages: [{ role: 'user', content: prompt }] })
+    });
+    const data = await resp.json();
+    const text = data.content.map(i => i.text||'').join('');
+    const pred = JSON.parse(text.replace(/```json|```/g,'').trim());
+    const conf = pred.confidence;
+    const confClass = conf >= 70 ? 'conf-high' : conf >= 50 ? 'conf-med' : 'conf-low';
+    const confLabel = conf >= 70 ? 'High Confidence' : conf >= 50 ? 'Moderate Confidence' : 'Low Confidence';
+    const valueColor = pred.value_rating === 'High Value' ? 'badge-win' : pred.value_rating === 'Fade' ? 'badge-loss' : 'badge-pending';
+
+    resultDiv.innerHTML = `
+      <div class="pred-output">
+        <div class="pred-top">
+          <div>
+            <div class="pred-player-name">${playerName}</div>
+            <div class="pred-meta">${sport} · ${propType} ${line}${odds ? ' · ' + odds : ''}</div>
+          </div>
+          <div>
+            <div class="pred-rec">${pred.recommendation}</div>
+            <div class="pred-value-badge"><span class="badge ${valueColor}">${pred.value_rating}</span></div>
+          </div>
+        </div>
+        <div class="conf-row">
+          <span class="conf-label-txt">${confLabel}</span>
+          <span class="conf-pct">${conf}%</span>
+        </div>
+        <div class="conf-bar"><div class="conf-fill ${confClass}" style="width:${conf}%"></div></div>
+        <!-- Pattern match + data confidence badges -->
+        <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;">
+          ${pred.pattern_match ? `<span style="font-size:12px;font-weight:600;padding:4px 12px;border-radius:99px;background:${pred.pattern_match==='High'?'var(--green-dim)':pred.pattern_match==='Medium'?'var(--yellow-dim)':'var(--red-dim)'};color:${pred.pattern_match==='High'?'var(--green)':pred.pattern_match==='Medium'?'var(--yellow)':'var(--red)'};">Pattern Match: ${pred.pattern_match}</span>` : ''}
+          ${pred.data_confidence ? `<span style="font-size:12px;font-weight:600;padding:4px 12px;border-radius:99px;background:rgba(255,255,255,0.06);color:var(--text2);">Data: ${pred.data_confidence}</span>` : ''}
+        </div>
+        <hr class="divider">
+        <div class="reasoning-section">
+          <div class="reasoning-title">AI Reasoning</div>
+          <div class="reasoning-text">${pred.reasoning}</div>
+        </div>
+        <div class="edges-risks">
+          <div>
+            <div class="reasoning-title" style="color:var(--green)">Key Factors</div>
+            ${(pred.key_factors || pred.edges || []).map(e => `<div class="edge-item">${e}</div>`).join('')}
+          </div>
+          <div>
+            <div class="reasoning-title" style="color:var(--red)">Risk Factors</div>
+            ${(pred.risks || []).map(r => `<div class="risk-item">${r}</div>`).join('')}
+          </div>
+        </div>
+      </div>`;
+  } catch(e) {
+    resultDiv.innerHTML = '<div class="pred-output"><div style="font-size:14px;color:var(--text3)">Error generating prediction. Please try again.</div></div>';
+  }
+  btn.disabled = false;
+  btn.innerHTML = '&#10022; Generate AI Prediction';
+}
+
+// ── PrizePicks ──────────────────────────────────────────────────────────────
+const PP_SOCCER = [{ id: 82, label: 'Full Game' }, { id: 242, label: '1st Half' }, { id: 243, label: '2nd Half' }];
+
+async function loadPrizePicks() {
+  const btn = document.getElementById('pp-btn');
+  const status = document.getElementById('pp-status');
+  const listEl = document.getElementById('pp-list');
+  const itemsEl = document.getElementById('pp-items');
+  btn.disabled = true;
+  btn.innerHTML = '<div class="dots"><span style="background:var(--green)"></span><span style="background:var(--green)"></span><span style="background:var(--green)"></span></div> Fetching...';
+  status.textContent = '';
+  let allProps = [];
+  for (const league of PP_SOCCER) {
+    try {
+      const resp = await fetch(`https://api.prizepicks.com/projections?league_id=${league.id}&per_page=250`);
+      const data = await resp.json();
+      const players = {};
+      for (const item of (data.included || [])) {
+        if (item.type === 'new_player') players[item.id] = item.attributes?.display_name || 'Unknown';
+      }
+      for (const p of (data.data || [])) {
+        const attrs = p.attributes || {};
+        const pid = p.relationships?.new_player?.data?.id || '';
+        allProps.push({ player: players[pid] || 'Unknown', stat: attrs.stat_type || '', line: attrs.line_score ?? '', desc: attrs.description || '', half: league.label });
+      }
+    } catch(e) {}
+  }
+  btn.disabled = false;
+  btn.innerHTML = '&#8635; Fetch Live Props';
+  if (!allProps.length) {
+    status.textContent = 'No soccer props live right now — check back when games are scheduled.';
+    listEl.style.display = 'none';
+    return;
+  }
+  status.textContent = allProps.length + ' props loaded';
+  itemsEl.innerHTML = allProps.map((p, i) => `
+    <div class="pp-item" onclick="selectPP(${i})">
+      <div>
+        <div class="pp-item-player">${p.player}</div>
+        <div class="pp-item-detail">${p.stat} · ${p.desc} · ${p.half}</div>
+      </div>
+      <div class="pp-item-line">${p.line}</div>
+    </div>`).join('');
+  listEl.style.display = 'block';
+  window._ppProps = allProps;
+}
+
+function selectPP(i) {
+  const p = window._ppProps[i];
+  if (!p) return;
+  const statMap = { 'Points':'Goals Scored','Assists':'Assists','Shots on Target':'Shots on Target','Total Shots':'Total Shots','Passes':'Passes Attempted','Tackles':'Tackles','Saves':'Saves','Goals':'Goals Scored','Key Passes':'Key Passes','Interceptions':'Interceptions' };
+  document.getElementById('pred-player').value = p.player;
+  document.getElementById('pred-line').value = p.line;
+  const sel = document.getElementById('pred-prop');
+  const mapped = statMap[p.stat] || p.stat;
+  for (const opt of sel.options) { if (opt.value === mapped || opt.value === p.stat) { sel.value = opt.value; break; } }
+  document.getElementById('pred-player').scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+// ── API Key ───────────────────────────────────────────────────────────────────
+function getApiKey() { return localStorage.getItem('pp_api_key') || ''; }
+function saveApiKey(val) {
+  localStorage.setItem('pp_api_key', val.trim());
+  const status = document.getElementById('api-key-status');
+  status.textContent = val.trim() ? '✓ Saved' : '';
+  status.style.color = 'var(--green)';
+}
+function toggleSettings() {
+  const p = document.getElementById('settings-panel');
+  p.style.display = p.style.display === 'none' ? 'block' : 'none';
+  if (p.style.display === 'block') {
+    const inp = document.getElementById('api-key-input');
+    inp.value = getApiKey();
+    if (inp.value) document.getElementById('api-key-status').textContent = '✓ Saved';
+  }
+}
+function claudeHeaders() {
+  const key = getApiKey();
+  return {
+    'Content-Type': 'application/json',
+    'x-api-key': key,
+    'anthropic-version': '2023-06-01',
+    'anthropic-dangerous-direct-browser-access': 'true'
+  };
+}
+
+// ── Slip Photo Reader ─────────────────────────────────────────────────────────
+function handleSlipDrop(e) {
+  e.preventDefault();
+  document.getElementById('slip-drop-zone').style.borderColor = 'var(--border2)';
+  const file = e.dataTransfer.files[0];
+  if (file && file.type.startsWith('image/')) handleSlipFile(file);
+}
+
+function handleSlipFile(file) {
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    const dataUrl = e.target.result;
+    document.getElementById('slip-preview').src = dataUrl;
+    document.getElementById('slip-preview-wrap').style.display = 'block';
+    document.getElementById('slip-drop-content').style.display = 'none';
+    document.getElementById('slip-results').style.display = 'none';
+    document.getElementById('slip-bets-list').innerHTML = '';
+    document.getElementById('slip-status').textContent = '';
+    await readSlipWithAI(dataUrl, file.type);
+  };
+  reader.readAsDataURL(file);
+}
+
+function clearSlipPhoto() {
+  document.getElementById('slip-preview').src = '';
+  document.getElementById('slip-preview-wrap').style.display = 'none';
+  document.getElementById('slip-drop-content').style.display = 'block';
+  document.getElementById('slip-results').style.display = 'none';
+  document.getElementById('slip-bets-list').innerHTML = '';
+  document.getElementById('slip-status').textContent = '';
+  document.getElementById('slip-file-input').value = '';
+  window._slipBets = [];
+}
+
+async function readSlipWithAI(dataUrl, mimeType) {
+  const status = document.getElementById('slip-status');
+  const results = document.getElementById('slip-results');
+  results.style.display = 'none';
+
+  const apiKey = getApiKey();
+  if (!apiKey) {
+    status.innerHTML = '⚠️ <span style="color:var(--yellow)">Add your Anthropic API key first (click ⚙ API Key in the nav)</span>';
+    return;
+  }
+
+  status.innerHTML = '<div class="dots" style="display:inline-flex;gap:4px;"><span style="background:var(--green)"></span><span style="background:var(--green)"></span><span style="background:var(--green)"></span></div> Reading your slip...';
+
+  // Extract base64 data from data URL
+  const base64 = dataUrl.split(',')[1];
+  const mediaType = mimeType || 'image/jpeg';
+
+  try {
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: claudeHeaders(),
+      body: JSON.stringify({
+        model: 'claude-opus-4-6',
+        max_tokens: 800,
+        messages: [{
+          role: 'user',
+          content: [
+            {
+              type: 'image',
+              source: { type: 'base64', media_type: mediaType, data: base64 }
+            },
+            {
+              type: 'text',
+              text: `This is a sports betting slip. Extract every individual bet you can see. For soccer/football props, identify the stat type as specifically as possible (e.g. "Shots on Target", "Passes Attempted", "Goals Scored", "Assists", "Tackles", "Minutes Played", etc.).
+
+Return JSON only, no other text:
+{
+  "bets": [
+    {
+      "player": "full player name",
+      "propType": "specific stat name",
+      "line": 2.5,
+      "direction": "Over" or "Under" or "Yes" or "No",
+      "odds": "-115" or null,
+      "result": "win" or "loss" or "pending"
+    }
+  ],
+  "slipNote": "any other useful context from the slip (date, sportsbook name, total odds, etc.)"
+}
+
+If a field is not visible, use null. Extract ALL bets on the slip.`
+            }
+          ]
+        }]
+      })
+    });
+
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.error?.message || 'API error');
+
+    const text = data.content?.map(c => c.text||'').join('') || '';
+    const clean = text.replace(/```json|```/g, '').trim();
+    const parsed = JSON.parse(clean);
+    const bets = parsed.bets || [];
+
+    if (!bets.length) {
+      status.textContent = 'No bets detected on this slip. Try a clearer image.';
+      return;
+    }
+
+    status.innerHTML = `✓ Found <strong style="color:var(--green)">${bets.length} bet${bets.length>1?'s':''}</strong>${parsed.slipNote ? ' · ' + parsed.slipNote : ''}`;
+    renderSlipBets(bets);
+
+  } catch(err) {
+    status.innerHTML = `<span style="color:var(--red)">Error: ${err.message}</span>`;
+  }
+}
+
+const SLIP_PROP_OPTIONS = [
+  // Scoring
+  'Anytime Goal Scorer','First Goal Scorer','Last Goal Scorer','Goals Scored',
+  'To Score or Assist','Goal Involvements','Hat Trick',
+  // Shots
+  'Shots on Target','Total Shots','Blocked Shots',
+  // Assists & Chances
+  'Assists','Key Passes','Chances Created','Big Chances Created',
+  // Passing
+  'Passes Attempted','Passes Completed','Pass Completion %','Long Balls Attempted',
+  'Long Balls Completed','Crosses Attempted','Crosses Completed','Progressive Passes',
+  // Defensive
+  'Tackles','Tackles Won','Interceptions','Clearances','Blocks','Ball Recoveries',
+  'Saves','Goals Conceded','Clean Sheet','Punches','High Claims',
+  // Dribbles & Duels
+  'Dribbles Attempted','Dribbles Completed','Duels Won','Aerial Duels Won',
+  'Ground Duels Won','Ball Carries','Progressive Carries',
+  // Fouls & Discipline
+  'Fouls Committed','Fouls Drawn','Yellow Card','Red Card',
+  // Other
+  'Minutes Played','Touches','Offsides','Corners Won','Expected Goals','Expected Assists',
+  'Other'
+];
+
+function slipPropOptions(selected) {
+  return SLIP_PROP_OPTIONS.map(o =>
+    `<option value="${o}" ${(selected||'').toLowerCase().includes(o.toLowerCase().replace(' (o/u)','').replace(' (yes/no)','')) ? 'selected' : ''}>${o}</option>`
+  ).join('');
+}
+
+function renderSlipBets(bets) {
+  window._slipBets = JSON.parse(JSON.stringify(bets)); // deep copy
+  const list = document.getElementById('slip-bets-list');
+  list.innerHTML = bets.map((b, i) => slipBetCard(b, i)).join('');
+  document.getElementById('slip-results').style.display = 'block';
+}
+
+function slipBetCard(b, i) {
+  return `<div id="slip-bet-${i}" style="background:var(--card2);border:1px solid var(--border);border-radius:12px;padding:16px 18px;margin-bottom:10px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <div style="font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--green);">Bet ${i+1}</div>
+      <button onclick="document.getElementById('slip-bet-${i}').remove()" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:18px;line-height:1;" title="Remove this bet">✕</button>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+      <div class="field">
+        <label class="field-label">Player Name</label>
+        <input type="text" id="sb-player-${i}" value="${b.player||''}" placeholder="e.g. Mohamed Salah" style="height:36px;" />
+      </div>
+      <div class="field">
+        <label class="field-label">Prop Type</label>
+        <select id="sb-prop-${i}" style="height:36px;">${slipPropOptions(b.propType)}</select>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;margin-bottom:12px;">
+      <div class="field">
+        <label class="field-label">Line</label>
+        <input type="number" id="sb-line-${i}" value="${b.line||''}" placeholder="2.5" step="0.5" style="height:36px;" />
+      </div>
+      <div class="field">
+        <label class="field-label">Direction</label>
+        <select id="sb-dir-${i}" style="height:36px;">
+          <option value="Over" ${b.direction==='Over'?'selected':''}>Over</option>
+          <option value="Under" ${b.direction==='Under'?'selected':''}>Under</option>
+          <option value="Yes" ${b.direction==='Yes'?'selected':''}>Yes</option>
+          <option value="No" ${b.direction==='No'?'selected':''}>No</option>
+        </select>
+      </div>
+      <div class="field">
+        <label class="field-label">Result</label>
+        <select id="sb-result-${i}" style="height:36px;">
+          <option value="pending" ${(!b.result||b.result==='pending')?'selected':''}>Pending</option>
+          <option value="win" ${b.result==='win'?'selected':''}>Win ✓</option>
+          <option value="loss" ${b.result==='loss'?'selected':''}>Loss ✗</option>
+        </select>
+      </div>
+      <div class="field">
+        <label class="field-label">Odds</label>
+        <input type="text" id="sb-odds-${i}" value="${b.odds||''}" placeholder="-115" style="height:36px;" />
+      </div>
+    </div>
+    <button onclick="saveSlipBet(${i})" id="sb-save-${i}" style="background:var(--green);color:#000;border:none;border-radius:8px;padding:9px 20px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;letter-spacing:.04em;">+ Save to Training Data</button>
+  </div>`;
+}
+
+function addBlankSlipBet() {
+  if (!window._slipBets) window._slipBets = [];
+  const i = window._slipBets.length;
+  window._slipBets.push({ player:'', propType:'Shots on Target', line:'', direction:'Over', result:'pending', odds:'' });
+  const list = document.getElementById('slip-bets-list');
+  list.insertAdjacentHTML('beforeend', slipBetCard(window._slipBets[i], i));
+  document.getElementById('slip-results').style.display = 'block';
+  document.getElementById(`sb-player-${i}`).focus();
+}
+
+function saveSlipBet(i) {
+  // Read current values from the editable fields
+  const player = document.getElementById(`sb-player-${i}`)?.value.trim() || 'Unknown';
+  const propType = document.getElementById(`sb-prop-${i}`)?.value || 'Unknown';
+  const line = parseFloat(document.getElementById(`sb-line-${i}`)?.value) || 0;
+  const direction = document.getElementById(`sb-dir-${i}`)?.value || 'Over';
+  const result = document.getElementById(`sb-result-${i}`)?.value || 'pending';
+  const odds = document.getElementById(`sb-odds-${i}`)?.value.trim() || '';
+
+  const pick = {
+    id: Date.now() + i,
+    player,
+    playerId: null,
+    sport: 'Soccer',
+    propType,
+    line,
+    direction,
+    odds,
+    reasoning: 'Imported from slip photo',
+    result,
+    date: new Date().toLocaleDateString(),
+    opponent: null, ha: null, matchResult: null, score: null,
+    actualStat: null, gameStats: {}, fromSlip: true,
+  };
+
+  picks.unshift(pick);
+  save();
+  renderPickList();
+  renderTrainSummary();
+
+  // Show saved state on the card
+  const card = document.getElementById(`slip-bet-${i}`);
+  if (card) {
+    card.style.borderColor = 'var(--green)';
+    card.style.background = 'var(--green-dim)';
+    card.querySelector('button').textContent = '✓ Saved!';
+    card.querySelector('button').disabled = true;
+  }
+}
+
+// ── Chat ──────────────────────────────────────────────────────────────────────
+let _chatHistory = []; // {role, content} pairs for multi-turn
+
+function buildChatSystemPrompt() {
+  // Summarise training data so AI has full context
+  const total = picks.length;
+  const settled = picks.filter(p => p.result === 'win' || p.result === 'loss');
+  const wins = settled.filter(p => p.result === 'win').length;
+  const winRate = settled.length ? Math.round(wins / settled.length * 100) : null;
+
+  // Prop type breakdown
+  const propMap = {};
+  settled.forEach(p => {
+    if (!propMap[p.propType]) propMap[p.propType] = { w: 0, l: 0 };
+    p.result === 'win' ? propMap[p.propType].w++ : propMap[p.propType].l++;
+  });
+  const propBreakdown = Object.entries(propMap)
+    .sort((a,b) => (b[1].w/(b[1].w+b[1].l)) - (a[1].w/(a[1].w+a[1].l)))
+    .map(([prop, {w, l}]) => `  • ${prop}: ${w}W ${l}L (${Math.round(w/(w+l)*100)}%)`)
+    .join('\n');
+
+  // Player breakdown
+  const playerMap = {};
+  settled.forEach(p => {
+    if (!playerMap[p.player]) playerMap[p.player] = { w: 0, l: 0 };
+    p.result === 'win' ? playerMap[p.player].w++ : playerMap[p.player].l++;
+  });
+  const playerBreakdown = Object.entries(playerMap)
+    .filter(([,v]) => v.w+v.l >= 2)
+    .sort((a,b) => (b[1].w/(b[1].w+b[1].l)) - (a[1].w/(a[1].w+a[1].l)))
+    .slice(0, 8)
+    .map(([player, {w, l}]) => `  • ${player}: ${w}W ${l}L (${Math.round(w/(w+l)*100)}%)`)
+    .join('\n');
+
+  // Recent picks
+  const recentPicks = picks.slice(0, 15).map(p =>
+    `  • ${p.player} | ${p.direction} ${p.line} ${p.propType}${p.opponent ? ' vs ' + p.opponent : ''}${p.ha ? ' (' + p.ha + ')' : ''} | ${p.result.toUpperCase()}${p.actualStat != null ? ' | Actual: ' + p.actualStat : ''}${p.reasoning ? ' | ' + p.reasoning.slice(0,80) : ''}`
+  ).join('\n');
+
+  return `You are Pick Prophet AI — a sharp soccer betting analyst and advisor. You have access to this bettor's full pick history and performance data. Use it to give specific, data-driven advice.
+
+BETTOR STATS:
+- Total picks logged: ${total}
+- Overall win rate: ${winRate !== null ? winRate + '%' : 'N/A'} (${settled.length} settled)
+
+PERFORMANCE BY PROP TYPE:
+${propBreakdown || '  No settled picks yet'}
+
+PERFORMANCE BY PLAYER:
+${playerBreakdown || '  Not enough data yet'}
+
+RECENT PICK HISTORY:
+${recentPicks || '  No picks logged yet'}
+
+Your role:
+- Give honest, sharp betting advice based on the data
+- Reference specific win rates and patterns when relevant
+- Flag value bets and fades based on their track record
+- Be concise but insightful — no fluff
+- Ask clarifying questions if needed (e.g. what line, which matchup)
+- You can also give general soccer prop betting strategy advice`;
+}
+
+function appendChatMessage(role, content, isTyping = false) {
+  const msgs = document.getElementById('chat-messages');
+  const div = document.createElement('div');
+  div.className = `chat-msg ${role}`;
+  div.innerHTML = `<div class="chat-bubble ${role === 'user' ? 'user-bubble' : 'ai-bubble'}">
+    ${role === 'assistant' ? '<div style="font-size:13px;font-weight:600;color:var(--green);margin-bottom:6px;">Pick Prophet AI</div>' : ''}
+    ${isTyping ? '<div class="chat-typing"><span></span><span></span><span></span></div>' : content.replace(/\n/g, '<br>')}
+  </div>`;
+  msgs.appendChild(div);
+  msgs.scrollTop = msgs.scrollHeight;
+  return div;
+}
+
+function sendSuggestion(btn) {
+  document.getElementById('chat-input').value = btn.textContent;
+  document.getElementById('chat-suggestions').style.display = 'none';
+  sendChatMessage();
+}
+
+async function sendChatMessage() {
+  const input = document.getElementById('chat-input');
+  const text = input.value.trim();
+  if (!text) return;
+
+  const apiKey = getApiKey();
+  if (!apiKey) {
+    appendChatMessage('assistant', '⚠️ Add your Anthropic API key first — click **⚙ API Key** in the nav bar.');
+    return;
+  }
+
+  // Hide suggestions
+  document.getElementById('chat-suggestions').style.display = 'none';
+
+  // Show user message
+  appendChatMessage('user', text);
+  _chatHistory.push({ role: 'user', content: text });
+  input.value = '';
+  input.style.height = 'auto';
+
+  // Disable send
+  const btn = document.getElementById('chat-send-btn');
+  btn.disabled = true;
+
+  // Show typing indicator
+  const typingEl = appendChatMessage('assistant', '', true);
+
+  try {
+    const systemPrompt = buildChatSystemPrompt();
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: claudeHeaders(),
+      body: JSON.stringify({
+        model: 'claude-opus-4-6',
+        max_tokens: 1024,
+        system: systemPrompt,
+        messages: _chatHistory
+      })
+    });
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.error?.message || 'API error');
+
+    const reply = data.content?.map(c => c.text || '').join('') || 'No response.';
+    _chatHistory.push({ role: 'assistant', content: reply });
+
+    // Replace typing indicator with real response
+    typingEl.querySelector('.chat-bubble').innerHTML =
+      '<div style="font-size:13px;font-weight:600;color:var(--green);margin-bottom:6px;">Pick Prophet AI</div>' +
+      reply.replace(/\n/g, '<br>');
+
+  } catch(err) {
+    typingEl.querySelector('.chat-bubble').innerHTML =
+      '<div style="font-size:13px;font-weight:600;color:var(--green);margin-bottom:6px;">Pick Prophet AI</div>' +
+      `<span style="color:var(--red)">Error: ${err.message}</span>`;
+  }
+
+  document.getElementById('chat-messages').scrollTop = 9999;
+  btn.disabled = false;
+  input.focus();
+}
+
+function clearChat() {
+  _chatHistory = [];
+  const msgs = document.getElementById('chat-messages');
+  msgs.innerHTML = `<div class="chat-msg ai">
+    <div class="chat-bubble ai-bubble">
+      <div style="font-size:13px;font-weight:600;color:var(--green);margin-bottom:6px;">Pick Prophet AI</div>
+      Chat cleared! Ask me anything about your picks or a prop you're considering.
+    </div>
+  </div>`;
+  document.getElementById('chat-suggestions').style.display = 'flex';
+}
+
+// ── Init ─────────────────────────────────────────────────────────────────────
+renderPickList();
+renderTrainSummary();
+</script>
+</body>
+</html>
