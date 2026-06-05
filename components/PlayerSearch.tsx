@@ -1,7 +1,7 @@
 'use client';
 import { useState, useRef, useEffect } from 'react';
 import { PlayerSearchResult, Sport } from '@/types';
-import { ssSearch, ssPlayerImageUrl, SS } from '@/lib/sofascore-client';
+import { ssSearch, ssPlayerImageUrl } from '@/lib/sofascore-client';
 
 interface Props {
   sport: Sport;
@@ -10,6 +10,8 @@ interface Props {
   inputStyle?: React.CSSProperties;
   defaultValue?: string;
 }
+
+const SPORT_EMOJI: Record<Sport, string> = { Soccer: '⚽', NBA: '🏀', NFL: '🏈' };
 
 async function searchPlayers(q: string, sport: Sport): Promise<PlayerSearchResult[]> {
   if (sport === 'Soccer') {
@@ -26,14 +28,39 @@ async function searchPlayers(q: string, sport: Sport): Promise<PlayerSearchResul
         sport: 'Soccer' as Sport,
       }));
   }
-  // NBA / NFL — fall back to our server-side route
   const res = await fetch(`/api/players/search?q=${encodeURIComponent(q)}&sport=${sport}`);
   const data = await res.json();
   return data.results || [];
 }
 
-export default function PlayerSearch({ sport, placeholder, onSelect, inputStyle, defaultValue }: Props) {
-  const [query, setQuery] = useState(defaultValue || '');
+function PlayerAvatar({ id, sport, size = 32 }: { id: string | number; sport: Sport; size?: number }) {
+  const [imgFailed, setImgFailed] = useState(false);
+
+  if (sport !== 'Soccer' || imgFailed) {
+    return (
+      <div style={{ width: size, height: size, borderRadius: '50%', background: 'var(--border2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: size * 0.5, flexShrink: 0 }}>
+        {SPORT_EMOJI[sport]}
+      </div>
+    );
+  }
+
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={ssPlayerImageUrl(id)}
+      alt=""
+      width={size}
+      height={size}
+      style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', background: 'var(--border2)', flexShrink: 0 }}
+      onError={() => setImgFailed(true)}
+    />
+  );
+}
+
+export { PlayerAvatar };
+
+export default function PlayerSearch({ sport, placeholder, onSelect, inputStyle }: Props) {
+  const [query, setQuery] = useState('');
   const [results, setResults] = useState<PlayerSearchResult[]>([]);
   const [open, setOpen] = useState(false);
   const [activeIdx, setActiveIdx] = useState(-1);
@@ -43,20 +70,25 @@ export default function PlayerSearch({ sport, placeholder, onSelect, inputStyle,
 
   useEffect(() => {
     function handleOutside(e: MouseEvent) {
-      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false);
     }
     document.addEventListener('mousedown', handleOutside);
     return () => document.removeEventListener('mousedown', handleOutside);
   }, []);
+
+  // Reset when sport changes
+  useEffect(() => {
+    setQuery('');
+    setResults([]);
+    setOpen(false);
+  }, [sport]);
 
   function onInput(val: string) {
     setQuery(val);
     setActiveIdx(-1);
     if (timerRef.current) clearTimeout(timerRef.current);
     if (val.length < 2) { setOpen(false); setResults([]); return; }
-    timerRef.current = setTimeout(() => doSearch(val), 280);
+    timerRef.current = setTimeout(() => doSearch(val), 300);
   }
 
   async function doSearch(q: string) {
@@ -95,7 +127,7 @@ export default function PlayerSearch({ sport, placeholder, onSelect, inputStyle,
           value={query}
           onChange={e => onInput(e.target.value)}
           onKeyDown={onKeyDown}
-          placeholder={placeholder || `Search ${sport} player…`}
+          placeholder={placeholder || `Search ${sport} player… (e.g. Salah, Mbappe)`}
           autoComplete="off"
           style={inputStyle}
         />
@@ -105,6 +137,7 @@ export default function PlayerSearch({ sport, placeholder, onSelect, inputStyle,
           </div>
         )}
       </div>
+
       {open && results.length > 0 && (
         <div className="autocomplete-dropdown">
           {results.map((p, i) => (
@@ -113,20 +146,8 @@ export default function PlayerSearch({ sport, placeholder, onSelect, inputStyle,
               className={`ac-item${i === activeIdx ? ' active' : ''}`}
               onMouseDown={() => select(p)}
             >
-              {sport === 'Soccer' ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={ssPlayerImageUrl(p.id)}
-                  alt=""
-                  style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover', background: 'var(--border2)', flexShrink: 0 }}
-                  onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                />
-              ) : (
-                <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'var(--border2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px', flexShrink: 0 }}>
-                  {sport === 'NBA' ? '🏀' : '🏈'}
-                </div>
-              )}
-              <div>
+              <PlayerAvatar id={p.id} sport={sport} size={36} />
+              <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text)' }}>{p.name}</div>
                 <div style={{ fontSize: '12px', color: 'var(--text3)', marginTop: '1px' }}>
                   {[p.team, p.position].filter(Boolean).join(' · ')}

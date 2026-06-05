@@ -1,3 +1,4 @@
+'use client';
 // Client-side SofaScore calls — must run in browser only (SofaScore blocks server-side)
 export const SS = 'https://api.sofascore.com/api/v1';
 

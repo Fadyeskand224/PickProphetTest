@@ -1,7 +1,8 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { PPProp, PlayerSearchResult, Sport } from '@/types';
-import { ssEventLineups, ssPlayerImageUrl } from '@/lib/sofascore-client';
+import { ssEventLineups } from '@/lib/sofascore-client';
+import { PlayerAvatar } from '@/components/PlayerSearch';
 
 interface Player {
   id: number;
@@ -167,10 +168,7 @@ export default function GamePanel({
                       onMouseOver={e => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--green)'; (e.currentTarget as HTMLElement).style.background = 'var(--green-dim)'; }}
                       onMouseOut={e => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)'; (e.currentTarget as HTMLElement).style.background = 'var(--card)'; }}
                     >
-                      {sport === 'Soccer' && (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={ssPlayerImageUrl(p.id)} alt="" style={{ width: 28, height: 28, borderRadius: '50%', objectFit: 'cover', background: 'var(--border2)', flexShrink: 0 }} onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
-                      )}
+                      <PlayerAvatar id={p.id} sport={sport} size={28} />
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.name}</div>
                         {p.position && <div style={{ fontSize: '11px', color: 'var(--text3)', marginTop: '1px' }}>{p.position}</div>}

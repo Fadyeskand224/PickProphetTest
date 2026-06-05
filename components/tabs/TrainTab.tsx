@@ -1,11 +1,11 @@
 'use client';
 import { useState, useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
-import PlayerSearch from '@/components/PlayerSearch';
+import PlayerSearch, { PlayerAvatar } from '@/components/PlayerSearch';
 import PropSelect from '@/components/PropSelect';
 import { Pick, PlayerSearchResult, GameRow, Sport } from '@/types';
 import {
-  ssPlayerEvents, ssEventPlayerStats, ssPlayerImageUrl, fmtDate, SPORT_SLUG,
+  ssPlayerEvents, ssEventPlayerStats, fmtDate,
 } from '@/lib/sofascore-client';
 
 const PROP_TO_STAT: Record<string, string> = {
@@ -302,13 +302,9 @@ export default function TrainTab({ sport, picks, onAddPick, onRemovePick }: Prop
       {trainPlayer && (
         <div style={{ background: 'var(--card)', border: `1px solid var(--border)`, borderRadius: '16px', padding: '24px 28px', marginBottom: '16px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '16px' }}>
-            {sport === 'Soccer' && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={ssPlayerImageUrl(trainPlayer.id)} alt="" style={{ width: '48px', height: '48px', borderRadius: '50%', objectFit: 'cover', border: `2px solid ${sportColor}` }} onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
-            )}
-            {sport !== 'Soccer' && (
-              <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'var(--card2)', border: `2px solid ${sportColor}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px' }}>{sport === 'NBA' ? '🏀' : '🏈'}</div>
-            )}
+            <div style={{ border: `2px solid ${sportColor}`, borderRadius: '50%' }}>
+              <PlayerAvatar id={trainPlayer.id} sport={sport} size={48} />
+            </div>
             <div>
               <div style={{ fontSize: '17px', fontWeight: '700' }}>{trainPlayer.name}</div>
               <div style={{ fontSize: '12px', color: 'var(--text3)', marginTop: '2px' }}>{trainPlayer.team}{trainPlayer.position ? ' · ' + trainPlayer.position : ''}</div>
