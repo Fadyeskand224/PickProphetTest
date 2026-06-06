@@ -86,6 +86,7 @@ export default function PredictTab({ sport, picks }: Props) {
   const [predicting, setPredicting] = useState(false);
   const [prediction, setPrediction] = useState<PredictionResult | null>(null);
   const [predError, setPredError] = useState('');
+  const [matchupCtx, setMatchupCtx] = useState<{ opponent: string; isHome: boolean; isPlayoff: boolean } | null>(null);
 
   // PrizePicks
   const [ppLoading, setPpLoading] = useState(false);
@@ -104,6 +105,7 @@ export default function PredictTab({ sport, picks }: Props) {
   useEffect(() => {
     loadTodaySchedule();
     setPrediction(null);
+    setMatchupCtx(null);
     setSelectedPlayer(null);
     setGameData([]);
     setExpandedGameId(null);
@@ -151,6 +153,7 @@ export default function PredictTab({ sport, picks }: Props) {
     setGameData([]);
     setDataLoading(true);
     setPrediction(null);
+    setMatchupCtx(null);
     setStatsOpen(true);
     setActiveStatTab(getDefaultStatTab(sport));
     setStatTabCfg(STAT_TABS[getDefaultStatTab(sport)]);
@@ -297,13 +300,36 @@ export default function PredictTab({ sport, picks }: Props) {
     if (!selectedPlayer || !line) return;
     setPredicting(true); setPredError(''); setPrediction(null);
     try {
-      const res = await fetch('/api/ai/predict', {
+      const endpoint = sport === 'NBA'
+        ? '/api/ai/predict/nba'
+        : sport === 'NFL'
+          ? '/api/ai/predict/nfl'
+          : '/api/ai/predict/soccer';
+
+      const body: Record<string, unknown> = {
+        playerName: selectedPlayer.name,
+        sport, league, propType,
+        line: parseFloat(line),
+        direction: 'Over',
+        odds, context, picks,
+        gameData,
+        seasonContext: seasonCtx,
+      };
+
+      // NBA route needs player/team IDs for live matchup lookup
+      if (sport === 'NBA') {
+        body.playerId = selectedPlayer.id;
+        body.playerTeamId = selectedPlayer.teamId;
+      }
+
+      const res = await fetch(endpoint, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ playerName: selectedPlayer.name, sport, league, propType, line: parseFloat(line), direction: 'Over', odds, context, picks, gameData, seasonContext: seasonCtx }),
+        body: JSON.stringify(body),
       });
       const data = await res.json();
       if (data.error) throw new Error(data.error);
       setPrediction(data.prediction);
+      setMatchupCtx(data.matchupContext || null);
     } catch (err) { setPredError(String(err)); }
     finally { setPredicting(false); }
   }
@@ -603,15 +629,16 @@ export default function PredictTab({ sport, picks }: Props) {
               {predError}
             </div>
           )}
-          {prediction && <PredictionCard player={selectedPlayer.name} sport={sport} propType={propType} line={line} odds={odds} prediction={prediction} />}
+          {prediction && <PredictionCard player={selectedPlayer.name} sport={sport} propType={propType} line={line} odds={odds} prediction={prediction} matchupCtx={matchupCtx} />}
         </>
       )}
     </div>
   );
 }
 
-function PredictionCard({ player, sport, propType, line, odds, prediction: pred }: {
+function PredictionCard({ player, sport, propType, line, odds, prediction: pred, matchupCtx }: {
   player: string; sport: Sport; propType: string; line: string; odds: string; prediction: PredictionResult;
+  matchupCtx?: { opponent: string; isHome: boolean; isPlayoff: boolean } | null;
 }) {
   const [open, setOpen] = useState(true);
   const confClass = pred.confidence >= 70 ? 'conf-high' : pred.confidence >= 50 ? 'conf-med' : 'conf-low';
@@ -629,6 +656,11 @@ function PredictionCard({ player, sport, propType, line, odds, prediction: pred 
           <div style={{ fontSize: '18px', fontWeight: '800' }}>{player}</div>
           <div style={{ fontSize: '13px', color: 'var(--text2)', marginTop: '2px' }}>
             {sport} · {propType} {line}{odds ? ' · ' + odds : ''}
+            {matchupCtx && (
+              <span style={{ marginLeft: '8px', fontSize: '11px', color: 'var(--text3)' }}>
+                vs {matchupCtx.opponent} · {matchupCtx.isHome ? 'Home' : 'Away'}{matchupCtx.isPlayoff ? ' · 🏆 Playoffs' : ''}
+              </span>
+            )}
             <span style={{ marginLeft: '10px', fontSize: '12px', fontWeight: '700', padding: '2px 10px', borderRadius: '99px', background: valueStyle.bg, color: valueStyle.color }}>{pred.value_rating}</span>
           </div>
         </div>

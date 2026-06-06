@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ssGet, fmtDate } from '@/lib/sofascore';
-import { getNBAPlayerStats } from '@/lib/balldontlie';
+import { getNBAPlayerRecentGames } from '@/lib/nba';
 import { getNFLPlayerGameLog } from '@/lib/nfl';
 
 export async function GET(req: NextRequest) {
@@ -15,24 +15,20 @@ export async function GET(req: NextRequest) {
 
   try {
     if (sport === 'NBA') {
-      const stats = await getNBAPlayerStats(Number(playerId));
-      const events = stats.slice(0, 8).map((s: {
-        game: { date: string; home_team_id: number; visitor_team_id: number; home_team_score: number; visitor_team_score: number };
-        team: { id: number; full_name: string };
-        pts: number; reb: number; ast: number; stl: number; blk: number;
-        fg3m: number; fgm: number; fga: number; fg_pct: number;
-        dreb: number; oreb: number; turnover: number; ft_pct: number; min: string;
-      }) => {
-        const isHome = s.game.home_team_id === s.team.id;
+      const stats = await getNBAPlayerRecentGames(Number(playerId), 15);
+      const events = stats.map((s) => {
+        const isHome = s.game.home_team.id === s.team.id;
         const myScore = isHome ? s.game.home_team_score : s.game.visitor_team_score;
         const oppScore = isHome ? s.game.visitor_team_score : s.game.home_team_score;
         const result = myScore > oppScore ? 'W' : myScore < oppScore ? 'L' : 'D';
+        const opponent = isHome ? s.game.visitor_team.full_name : s.game.home_team.full_name;
         return {
           date: new Date(s.game.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-          opponent: `Team ${isHome ? s.game.visitor_team_id : s.game.home_team_id}`,
+          opponent,
           result,
           score: `${myScore}–${oppScore}`,
           ha: isHome ? 'H' : 'A',
+          postseason: s.game.postseason,
           stats: {
             pts: s.pts, reb: s.reb, ast: s.ast, stl: s.stl, blk: s.blk,
             fg3m: s.fg3m, fgm: s.fgm, fga: s.fga, fg_pct: s.fg_pct,

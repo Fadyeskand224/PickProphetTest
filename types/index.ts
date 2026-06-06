@@ -31,6 +31,7 @@ export interface PlayerSearchResult {
   id: string | number;
   name: string;
   team?: string;
+  teamId?: number | string;
   position?: string;
   sport: Sport;
 }

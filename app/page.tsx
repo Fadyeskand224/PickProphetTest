@@ -5,17 +5,12 @@ import TrainTab from '@/components/tabs/TrainTab';
 import PredictTab from '@/components/tabs/PredictTab';
 import HistoryTab from '@/components/tabs/HistoryTab';
 import ChatTab from '@/components/tabs/ChatTab';
+import SportTheme, { getSportTheme } from '@/components/SportTheme';
 import { useAuth } from '@/lib/auth';
 import { Pick, Sport } from '@/types';
 import { apiGetPicks, apiSavePick, apiDeletePick, localGetPicks, localSavePicks } from '@/lib/picks';
 
 type Tab = 'train' | 'predict' | 'history' | 'chat';
-
-const SPORT_ICONS: Record<Sport, string> = {
-  Soccer: '⚽',
-  NBA: '🏀',
-  NFL: '🏈',
-};
 
 export default function Home() {
   const { user } = useAuth();
@@ -54,8 +49,11 @@ export default function Home() {
     setPicks(prev => prev.filter(p => p.id !== id));
   }
 
+  const theme = getSportTheme(sport);
+
   return (
     <>
+      <SportTheme sport={sport} />
       <Nav sport={sport} onSportChange={setSport} />
 
       {/* Hero */}
@@ -64,7 +62,7 @@ export default function Home() {
           // The Engine
         </div>
         <h1 style={{ fontSize: 'clamp(32px, 5vw, 48px)', fontWeight: '800', lineHeight: '1.1' }}>
-          Your AI <span style={{ color: 'var(--green)' }}>{sport} Analyst</span>
+          Your AI <span style={{ color: 'var(--green)' }}>{theme.label} Analyst</span>
         </h1>
         <p style={{ marginTop: '16px', fontSize: '16px', color: 'var(--text2)', maxWidth: '560px', lineHeight: '1.6' }}>
           Real-time stats &amp; live odds from PrizePicks, DraftKings, FanDuel and more —
@@ -83,6 +81,13 @@ export default function Home() {
             </span>
           </div>
         )}
+
+        {/* Sport banner */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 16px', background: 'var(--green-dim)', border: '1px solid var(--green)', borderRadius: '10px', marginBottom: '20px' }}>
+          <span style={{ fontSize: '20px' }}>{theme.icon}</span>
+          <span style={{ fontSize: '13px', fontWeight: '700', letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--green)' }}>{theme.label}</span>
+          <span style={{ fontSize: '12px', color: 'var(--text3)', marginLeft: 'auto' }}>Switch sport in the nav above</span>
+        </div>
 
         {/* Tabs */}
         <div className="tab-bar">
@@ -103,11 +108,7 @@ export default function Home() {
           ))}
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '20px' }}>
-          <span style={{ fontSize: '18px' }}>{SPORT_ICONS[sport]}</span>
-          <span style={{ fontSize: '12px', fontWeight: '600', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text3)' }}>{sport} Mode</span>
-          {picksLoading && <span style={{ fontSize: '12px', color: 'var(--text3)' }}>Loading picks...</span>}
-        </div>
+        {picksLoading && <div style={{ fontSize: '12px', color: 'var(--text3)', marginBottom: '12px' }}>Loading picks...</div>}
 
         {activeTab === 'train' && <TrainTab sport={sport} picks={picks} onAddPick={addPick} onRemovePick={removePick} />}
         {activeTab === 'predict' && <PredictTab sport={sport} picks={picks} />}
